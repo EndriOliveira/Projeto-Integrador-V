@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  piv_database:
+    image: postgres
+    container_name: 'piv_database'
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: XQSP2A2C
+      POSTGRES_DB: piv
+    restart: always
