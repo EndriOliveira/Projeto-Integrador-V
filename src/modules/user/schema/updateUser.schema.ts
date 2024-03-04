@@ -1,6 +1,6 @@
-import { z } from 'zod';
 import { BadRequestException } from '@nestjs/common';
-import { UpdateUserDto } from '../dto/updateUserDto';
+import { z } from 'zod';
+import { UpdateUserDto } from '../dto/request/updateUserDto';
 
 export const validateUpdateUser = (body: UpdateUserDto) => {
   const schema = z.object({

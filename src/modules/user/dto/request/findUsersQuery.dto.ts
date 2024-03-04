@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseQueryParametersDto } from '../../../shared/dto/baseQueryParameters.dto';
+import { BaseQueryParametersDto } from '../../../../shared/dto/baseQueryParameters.dto';
 
 export class FindUsersQueryDto extends BaseQueryParametersDto {
   @ApiProperty({ required: false, description: 'Name of the user' })

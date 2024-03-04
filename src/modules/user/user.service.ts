@@ -3,18 +3,19 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
 import { verifyPassword } from '../../utils/encryption';
 import { removeNonNumbersCharacters } from '../../utils/removeNonNumbersCharacters';
 import { validateCPF } from '../../utils/validateCpf';
-import { FindUsersResponseDto } from './dto/findUsers.response.dto';
-import { FindUsersQueryDto } from './dto/findUsersQuery.dto';
-import { UpdateUserDto } from './dto/updateUserDto';
+import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
+import { UpdateUserDto } from './dto/request/updateUserDto';
+import { FindUserResponseDto } from './dto/response/findUser.response.dto';
+import { FindUsersResponseDto } from './dto/response/findUsers.response.dto';
+import { UpdateUserResponseDto } from './dto/response/updateUser.response.dto';
 import { validateGetUsers } from './schema/getUsers.schema';
 import { validateUpdateUser } from './schema/updateUser.schema';
 import userRepository from './user.repository';
 
-const getUserById = async (id: string): Promise<User> => {
+const getUserById = async (id: string): Promise<FindUserResponseDto> => {
   const user = await userRepository.getOneUser({ id });
   if (!user) throw new NotFoundException('User Not Found');
 
@@ -33,7 +34,7 @@ const getUsers = async (
 const editUser = async (
   userId: string,
   updateUserDto: UpdateUserDto,
-): Promise<User> => {
+): Promise<UpdateUserResponseDto> => {
   validateUpdateUser(updateUserDto);
 
   const { cpf, name, password, phone } = updateUserDto;

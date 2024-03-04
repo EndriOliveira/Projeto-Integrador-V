@@ -20,16 +20,18 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { User } from '@prisma/client';
+import { RefreshToken, User } from '@prisma/client';
 import { MessageResponseDto } from '../../shared/dto/message.response.dto';
 import { httpErrors } from '../../shared/errors/http-errors';
 import { authService } from './auth.service';
+import { GetRefreshToken } from './decorator/get-refreshToken.decorator';
 import { GetUser } from './decorator/get-user.decorator';
 import { ChangePasswordDto } from './dto/request/changePassword.dto';
 import { CreateUserDto } from './dto/request/createUser.dto';
 import { CredentialsDto } from './dto/request/credentials.dto';
 import { ForgotPasswordDto } from './dto/request/forgotPassword.dto';
 import { ResetPasswordDto } from './dto/request/resetPassword.dto';
+import { ChangePasswordResponseDto } from './dto/response/changePassword.response.dto';
 import { CreateUserResponseDto } from './dto/response/createUser.response.dto';
 import { MeResponseDto } from './dto/response/me.response.dto';
 import { SignInResponseDto } from './dto/response/signIn.response.dto';
@@ -90,11 +92,7 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Code generated successfully',
-    schema: {
-      example: {
-        message: 'string',
-      },
-    },
+    type: MessageResponseDto,
   })
   @ApiBadRequestResponse(httpErrors.badRequestError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
@@ -111,11 +109,7 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Password changed successfully',
-    schema: {
-      example: {
-        message: 'string',
-      },
-    },
+    type: MessageResponseDto,
   })
   @ApiBadRequestResponse(httpErrors.badRequestError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
@@ -129,23 +123,21 @@ export class AuthController {
   }
 
   @Post('/logout')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard('jwt-refresh-token'))
   @ApiSecurity('JWT-refresh')
   @ApiResponse({
     status: 200,
     description: 'Logged out successfully',
-    schema: {
-      example: {
-        message: 'string',
-      },
-    },
+    type: MessageResponseDto,
   })
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
-  async logout(@GetUser() user: User): Promise<MessageResponseDto> {
-    return await authService.logout(user.id);
+  async logout(
+    @GetRefreshToken() refreshToken: RefreshToken,
+  ): Promise<MessageResponseDto> {
+    return await authService.logout(refreshToken);
   }
 
   @Put('/change-password')
@@ -154,19 +146,7 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Password changed successfully',
-    schema: {
-      example: {
-        id: 'string',
-        active: 'boolean',
-        name: 'string',
-        cpf: 'string',
-        phone: 'string',
-        email: 'string',
-        slug: 'string',
-        createdAt: 'dateTime',
-        updatedAt: 'dateTime',
-      },
-    },
+    type: ChangePasswordResponseDto,
   })
   @ApiBadRequestResponse(httpErrors.badRequestError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
@@ -176,7 +156,7 @@ export class AuthController {
   async changePassword(
     @GetUser() user: User,
     @Body() changePasswordDto: ChangePasswordDto,
-  ): Promise<User> {
+  ): Promise<ChangePasswordResponseDto> {
     return await authService.changePassword(user.id, changePasswordDto);
   }
 }

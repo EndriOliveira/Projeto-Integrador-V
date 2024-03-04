@@ -22,9 +22,11 @@ import {
 import { User } from '@prisma/client';
 import { httpErrors } from '../../shared/errors/http-errors';
 import { GetUser } from '../auth/decorator/get-user.decorator';
-import { FindUsersResponseDto } from './dto/findUsers.response.dto';
-import { FindUsersQueryDto } from './dto/findUsersQuery.dto';
-import { UpdateUserDto } from './dto/updateUserDto';
+import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
+import { UpdateUserDto } from './dto/request/updateUserDto';
+import { FindUserResponseDto } from './dto/response/findUser.response.dto';
+import { FindUsersResponseDto } from './dto/response/findUsers.response.dto';
+import { UpdateUserResponseDto } from './dto/response/updateUser.response.dto';
 import userService from './user.service';
 
 @Controller('user')
@@ -36,24 +38,12 @@ export class UserController {
   @ApiResponse({
     status: 200,
     description: 'User Found Successfully',
-    schema: {
-      example: {
-        id: 'string',
-        active: 'boolean',
-        name: 'string',
-        cpf: 'string',
-        phone: 'string',
-        email: 'string',
-        slug: 'string',
-        createdAt: 'dateTime',
-        updatedAt: 'dateTime',
-      },
-    },
+    type: FindUserResponseDto,
   })
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
-  async getUserBySlug(@Param('id') id: string): Promise<User> {
+  async getUserBySlug(@Param('id') id: string): Promise<FindUserResponseDto> {
     return await userService.getUserById(id);
   }
 
@@ -63,26 +53,7 @@ export class UserController {
   @ApiResponse({
     status: 200,
     description: 'Users Found Successfully',
-    schema: {
-      example: {
-        users: [
-          {
-            id: 'string',
-            active: 'boolean',
-            name: 'string',
-            cpf: 'string',
-            phone: 'string',
-            email: 'string',
-            slug: 'string',
-            createdAt: 'dateTime',
-            updatedAt: 'dateTime',
-          },
-        ],
-        total: 'number',
-        page: 'number',
-        pages: 'number',
-      },
-    },
+    type: FindUsersResponseDto,
   })
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
@@ -98,19 +69,7 @@ export class UserController {
   @ApiResponse({
     status: 200,
     description: 'User Updated Successfully',
-    schema: {
-      example: {
-        id: 'string',
-        active: 'boolean',
-        name: 'string',
-        cpf: 'string',
-        phone: 'string',
-        email: 'string',
-        slug: 'string',
-        createdAt: 'dateTime',
-        updatedAt: 'dateTime',
-      },
-    },
+    type: UpdateUserResponseDto,
   })
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
@@ -120,7 +79,7 @@ export class UserController {
   async editUser(
     @GetUser() user: User,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<User> {
+  ): Promise<UpdateUserResponseDto> {
     return await userService.editUser(user.id, updateUserDto);
   }
 }

@@ -1,9 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { RefreshToken, User } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import envConfig from '../../config/env.config';
 import { MessageResponseDto } from '../../shared/dto/message.response.dto';
@@ -18,6 +19,7 @@ import refreshTokenRepository from '../refreshToken/refreshToken.repository';
 import refreshTokenService from '../refreshToken/refreshToken.service';
 import { sendMail } from '../sendGrid/sendGrid.service';
 import userRepository from '../user/user.repository';
+import userService from '../user/user.service';
 import { ChangePasswordDto } from './dto/request/changePassword.dto';
 import { CreateUserDto } from './dto/request/createUser.dto';
 import { CredentialsDto } from './dto/request/credentials.dto';
@@ -93,11 +95,24 @@ const signIn = async (
   };
 };
 
-const logout = async (userId: string): Promise<MessageResponseDto> => {
-  const user = await userRepository.getOneUser({ id: userId }, ['id']);
-  if (!user) throw new UnauthorizedException('Invalid Credentials');
+const logout = async (
+  refreshToken: RefreshToken,
+): Promise<MessageResponseDto> => {
+  const { id, userId } = refreshToken;
 
-  await refreshTokenRepository.deleteOneRefreshToken({ id: userId });
+  const refreshTokenExists = await refreshTokenRepository.getOneRefreshToken({
+    id,
+  });
+  if (!refreshTokenExists)
+    throw new UnauthorizedException('Invalid Refresh Token');
+
+  const user = await userService.getUserById(userId);
+  if (!user) {
+    await refreshTokenRepository.deleteOneRefreshToken({ id });
+    throw new NotFoundException('User Not Found');
+  }
+
+  await refreshTokenRepository.deleteOneRefreshToken({ id });
 
   return {
     message: 'Logged out successfully',

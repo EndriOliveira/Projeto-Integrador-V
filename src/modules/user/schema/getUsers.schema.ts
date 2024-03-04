@@ -1,6 +1,6 @@
-import { z } from 'zod';
 import { BadRequestException } from '@nestjs/common';
-import { FindUsersQueryDto } from '../dto/findUsersQuery.dto';
+import { z } from 'zod';
+import { FindUsersQueryDto } from '../dto/request/findUsersQuery.dto';
 
 export const validateGetUsers = (body: FindUsersQueryDto) => {
   const schema = z.object({
