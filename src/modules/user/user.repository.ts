@@ -4,7 +4,7 @@ import { v4 as uuidV4 } from 'uuid';
 import client from '../../database/client';
 import { removeNonNumbersCharacters } from '../../utils/removeNonNumbersCharacters';
 import { totalPages } from '../../utils/totalPages';
-import { CreateUserDto } from '../auth/dto/request/createUser.dto';
+import { CreateUserDto } from './dto/request/createUser.dto';
 import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
 import { FindUsersResponseDto } from './dto/response/findUsers.response.dto';
 

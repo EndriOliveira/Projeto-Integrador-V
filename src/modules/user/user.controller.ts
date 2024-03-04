@@ -5,13 +5,17 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Post,
   Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import {
+  ApiBadRequestResponse,
+  ApiBody,
   ApiConflictResponse,
+  ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiResponse,
@@ -22,8 +26,10 @@ import {
 import { User } from '@prisma/client';
 import { httpErrors } from '../../shared/errors/http-errors';
 import { GetUser } from '../auth/decorator/get-user.decorator';
+import { CreateUserDto } from './dto/request/createUser.dto';
 import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto';
+import { CreateUserResponseDto } from './dto/response/createUser.response.dto';
 import { FindUserResponseDto } from './dto/response/findUser.response.dto';
 import { FindUsersResponseDto } from './dto/response/findUsers.response.dto';
 import { UpdateUserResponseDto } from './dto/response/updateUser.response.dto';
@@ -47,6 +53,27 @@ export class UserController {
     return await userService.getUserById(id);
   }
 
+  @Post('/')
+  @UseGuards(AuthGuard())
+  @ApiSecurity('JWT-auth')
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Registered successfully',
+    type: CreateUserResponseDto,
+  })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiConflictResponse(httpErrors.conflictError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.CREATED)
+  async createUser(
+    @GetUser() user: User,
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<CreateUserResponseDto> {
+    return await userService.createUser(user, createUserDto);
+  }
+
   @Get('/')
   @UseGuards(AuthGuard())
   @ApiSecurity('JWT-auth')
@@ -66,6 +93,7 @@ export class UserController {
   @Put('/')
   @UseGuards(AuthGuard())
   @ApiSecurity('JWT-auth')
+  @ApiBody({ type: UpdateUserDto })
   @ApiResponse({
     status: 200,
     description: 'User Updated Successfully',

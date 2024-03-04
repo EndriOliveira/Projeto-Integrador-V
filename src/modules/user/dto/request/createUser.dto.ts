@@ -9,10 +9,7 @@ export class CreateUserDto {
   phone: string;
   @ApiProperty({ example: 'john.doe@email.com' })
   email: string;
-  @ApiProperty({ example: 'Password!123' })
-  password: string;
-  @ApiProperty({ example: 'Password!123' })
-  passwordConfirmation: string;
+  password?: string;
   @ApiProperty({ example: 'Developer' })
   department: string;
   @ApiProperty({ example: false })

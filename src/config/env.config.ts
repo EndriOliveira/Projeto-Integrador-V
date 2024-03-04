@@ -15,6 +15,8 @@ const envVarsSchema = z.object({
   SENDGRID_API_KEY: z.string(),
   SENDGRID_EMAIL: z.string().email(),
   FRONTEND_URL: z.string().url(),
+  HUMAN_RESOURCES_EMAIL: z.string().email(),
+  HUMAN_RESOURCES_PASSWORD: z.string(),
 });
 
 const result = envVarsSchema.safeParse(process.env);
@@ -35,4 +37,8 @@ export default {
     email: result.data.SENDGRID_EMAIL,
   },
   frontendUrl: result.data.FRONTEND_URL,
+  humanResources: {
+    email: result.data.HUMAN_RESOURCES_EMAIL,
+    password: result.data.HUMAN_RESOURCES_PASSWORD,
+  },
 };

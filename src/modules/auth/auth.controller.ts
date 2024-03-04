@@ -12,7 +12,6 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBody,
-  ApiConflictResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
   ApiResponse,
@@ -27,12 +26,10 @@ import { authService } from './auth.service';
 import { GetRefreshToken } from './decorator/get-refreshToken.decorator';
 import { GetUser } from './decorator/get-user.decorator';
 import { ChangePasswordDto } from './dto/request/changePassword.dto';
-import { CreateUserDto } from './dto/request/createUser.dto';
 import { CredentialsDto } from './dto/request/credentials.dto';
 import { ForgotPasswordDto } from './dto/request/forgotPassword.dto';
 import { ResetPasswordDto } from './dto/request/resetPassword.dto';
 import { ChangePasswordResponseDto } from './dto/response/changePassword.response.dto';
-import { CreateUserResponseDto } from './dto/response/createUser.response.dto';
 import { MeResponseDto } from './dto/response/me.response.dto';
 import { SignInResponseDto } from './dto/response/signIn.response.dto';
 
@@ -52,23 +49,6 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async me(@GetUser() user: User): Promise<MeResponseDto> {
     return user;
-  }
-
-  @Post('/sign-up')
-  @ApiBody({ type: CreateUserDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Registered successfully',
-    type: CreateUserResponseDto,
-  })
-  @ApiBadRequestResponse(httpErrors.badRequestError)
-  @ApiConflictResponse(httpErrors.conflictError)
-  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
-  @HttpCode(HttpStatus.CREATED)
-  async signUp(
-    @Body() createUserDto: CreateUserDto,
-  ): Promise<CreateUserResponseDto> {
-    return await authService.createUser(createUserDto);
   }
 
   @Post('/sign-in')

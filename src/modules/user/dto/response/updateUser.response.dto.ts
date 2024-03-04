@@ -1,3 +1,3 @@
-import { CreateUserResponseDto } from '../../../auth/dto/response/createUser.response.dto';
+import { CreateUserResponseDto } from './createUser.response.dto';
 
 export class UpdateUserResponseDto extends CreateUserResponseDto {}

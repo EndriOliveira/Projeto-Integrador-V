@@ -8,16 +8,6 @@ export const validateCreateUser = (body: CreateUserDto) => {
     cpf: z.string().trim().min(11).max(255),
     phone: z.string().trim().min(9).max(255),
     email: z.string().trim().email().max(255),
-    password: z
-      .string()
-      .trim()
-      .min(6)
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
-        'Password must have minimum 6 characters, at least 1 uppercase letter, 1 lowercase letter, 1 number and 1 special character',
-      )
-      .max(255),
-    passwordConfirmation: z.string().trim().max(255),
     department: z.string().trim().max(255),
     isHumanResources: z.boolean(),
     birthDate: z
