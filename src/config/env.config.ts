@@ -15,8 +15,18 @@ const envVarsSchema = z.object({
   SENDGRID_API_KEY: z.string(),
   SENDGRID_EMAIL: z.string().email(),
   FRONTEND_URL: z.string().url(),
+  HUMAN_RESOURCES_NAME: z.string(),
   HUMAN_RESOURCES_EMAIL: z.string().email(),
   HUMAN_RESOURCES_PASSWORD: z.string(),
+  HUMAN_RESOURCES_CPF: z.string(),
+  HUMAN_RESOURCES_PHONE: z.string(),
+  HUMAN_RESOURCES_BIRTH_DATE: z
+    .string()
+    .regex(
+      /^(?:(?:(?:0[1-9]|1[0-2])\/(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])\/(?:29|30)|(?:0[13578]|1[02])\/31)\/[1-9]\d{3}|02\/29(?:\/[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00))$/m,
+      'Invalid date format. Use MM/DD/YYYY',
+    ),
+  HUMAN_RESOURCES_DEPARTMENT: z.string(),
 });
 
 const result = envVarsSchema.safeParse(process.env);
@@ -38,7 +48,12 @@ export default {
   },
   frontendUrl: result.data.FRONTEND_URL,
   humanResources: {
+    name: result.data.HUMAN_RESOURCES_NAME,
     email: result.data.HUMAN_RESOURCES_EMAIL,
     password: result.data.HUMAN_RESOURCES_PASSWORD,
+    cpf: result.data.HUMAN_RESOURCES_CPF,
+    phone: result.data.HUMAN_RESOURCES_PHONE,
+    birthDate: result.data.HUMAN_RESOURCES_BIRTH_DATE,
+    department: result.data.HUMAN_RESOURCES_DEPARTMENT,
   },
 };

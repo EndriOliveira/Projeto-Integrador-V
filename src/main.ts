@@ -48,7 +48,11 @@ async function bootstrap() {
     )
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('/', app, document);
+  SwaggerModule.setup('/', app, document, {
+    swaggerOptions: {
+      defaultModelsExpandDepth: -1,
+    },
+  });
   prisma
     .$connect()
     .then(async () => {

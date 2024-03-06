@@ -1,8 +1,7 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { RefreshToken } from '@prisma/client';
-import * as dayjs from 'dayjs';
 import envConfig from '../../config/env.config';
-import { generateJwt } from '../../utils/jwt';
+import { generateJwt, verifyJwt } from '../../utils/jwt';
 import userService from '../user/user.service';
 import { NewAccessTokenResponseDto } from './dto/response/newAccessToken.response.dto';
 import refreshTokenRepository from './refreshToken.repository';
@@ -34,8 +33,9 @@ const createRefreshToken = async (userId: string): Promise<string> => {
 
 const createNewAccessToken = async (
   refreshToken: RefreshToken,
+  token: string,
 ): Promise<NewAccessTokenResponseDto> => {
-  const { id, userId, createdAt } = refreshToken;
+  const { id, userId } = refreshToken;
 
   const refreshTokenExists = await refreshTokenRepository.getOneRefreshToken({
     id,
@@ -43,10 +43,9 @@ const createNewAccessToken = async (
   if (!refreshTokenExists)
     throw new UnauthorizedException('Invalid Refresh Token');
 
-  const now = dayjs(new Date());
-  const codeDate = dayjs(createdAt);
-  const diff = now.diff(codeDate, 'hours');
-  if (diff >= 6) {
+  try {
+    verifyJwt(envConfig.jwt.refreshSecret, token);
+  } catch {
     await refreshTokenRepository.deleteOneRefreshToken({ id });
     throw new UnauthorizedException('Refresh Token has been expired');
   }

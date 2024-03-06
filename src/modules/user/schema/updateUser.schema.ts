@@ -17,7 +17,6 @@ export const validateUpdateUser = (body: UpdateUserDto) => {
         'Invalid date format. Use MM/DD/YYYY',
       )
       .optional(),
-    password: z.string().trim().max(255),
   });
   const validate = schema.safeParse(body);
   if (!validate['success'])

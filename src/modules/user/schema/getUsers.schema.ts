@@ -4,7 +4,6 @@ import { FindUsersQueryDto } from '../dto/request/findUsersQuery.dto';
 
 export const validateGetUsers = (body: FindUsersQueryDto) => {
   const schema = z.object({
-    active: z.string().max(255).optional(),
     limit: z.string().min(1).max(100),
     page: z.string().min(1),
     sortBy: z
@@ -12,7 +11,7 @@ export const validateGetUsers = (body: FindUsersQueryDto) => {
       .optional(),
     sortType: z.enum(['asc', 'desc']).optional(),
     cpf: z.string().max(255).optional(),
-    email: z.string().email().max(255).optional(),
+    email: z.string().max(255).optional(),
     name: z.string().max(255).optional(),
     phone: z.string().max(255).optional(),
   });

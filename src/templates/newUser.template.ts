@@ -276,7 +276,17 @@ export const newUserTemplate = (newUserBody: NewUserBody): NewUserResponse => {
                                         color: #555;
                                       ">
                               Essa será sua senha pra primeiro acesso. Recomendamos trocá-la assim que possível:
-                              ${newUserBody.password}
+                              <span style="
+                                            font-family: 'Helvetica Neue', Arial, sans-serif;
+                                            font-size: 20px;
+                                            margin-top: 20px;
+                                            line-height: 1;
+                                            font-weight: bold;
+                                            text-align: center;
+                                            color: #555;
+                                          ">
+                                ${newUserBody.password}
+                              </span>
                             </div>
                           </td>
                         </tr>

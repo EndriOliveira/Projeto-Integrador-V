@@ -47,6 +47,7 @@ export class UserController {
     type: FindUserResponseDto,
   })
   @ApiNotFoundResponse(httpErrors.notFoundError)
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
   async getUserBySlug(@Param('id') id: string): Promise<FindUserResponseDto> {
@@ -82,15 +83,18 @@ export class UserController {
     description: 'Users Found Successfully',
     type: FindUsersResponseDto,
   })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
   async getUsers(
+    @GetUser() user: User,
     @Query() query: FindUsersQueryDto,
   ): Promise<FindUsersResponseDto> {
-    return await userService.getUsers(query);
+    return await userService.getUsers(query, user);
   }
 
-  @Put('/')
+  @Put('/:id')
   @UseGuards(AuthGuard())
   @ApiSecurity('JWT-auth')
   @ApiBody({ type: UpdateUserDto })
@@ -100,14 +104,17 @@ export class UserController {
     type: UpdateUserResponseDto,
   })
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiBadRequestResponse(httpErrors.badRequestError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @ApiConflictResponse(httpErrors.conflictError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
   async editUser(
+    @Param('id') id: string,
     @GetUser() user: User,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UpdateUserResponseDto> {
-    return await userService.editUser(user.id, updateUserDto);
+    return await userService.editUser(id, user, updateUserDto);
   }
 }

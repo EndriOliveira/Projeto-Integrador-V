@@ -3,6 +3,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -39,7 +40,11 @@ export class RefreshTokenController {
   @HttpCode(HttpStatus.CREATED)
   async createNewAccessToken(
     @GetRefreshToken() refreshToken: RefreshToken,
+    @Request() request: Request,
   ): Promise<NewAccessTokenResponseDto> {
-    return await refreshTokenService.createNewAccessToken(refreshToken);
+    return await refreshTokenService.createNewAccessToken(
+      refreshToken,
+      request.headers['authorization'].split(' ')[1],
+    );
   }
 }

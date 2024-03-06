@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtStrategy } from './modules/auth/middleware/jwt.strategy';
 import { JwtRefreshStrategy } from './modules/auth/middleware/jwtRefresh.strategy';
 import { RefreshTokenModule } from './modules/refreshToken/refreshToken.module';
+import { ScheduleModule } from './modules/schedule/schedule.module';
 import { UserModule } from './modules/user/user.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { UserModule } from './modules/user/user.module';
     AuthModule,
     UserModule,
     RefreshTokenModule,
+    ScheduleModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     WinstonModule.forRoot(winstonConfig),
   ],

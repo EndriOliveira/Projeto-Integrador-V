@@ -5,33 +5,32 @@ import { encryptPassword } from '../../src/utils/encryption';
 import { removeNonNumbersCharacters } from '../../src/utils/removeNonNumbersCharacters';
 
 export const userSeeder = async () => {
-  const users = [
-    {
-      name: 'John Doe',
-      cpf: '99999999999',
-      phone: '999999999',
-      email: envConfig.humanResources.email,
-      password: await encryptPassword(envConfig.humanResources.email),
-      department: 'Desenvolvedor',
-      birthDate: dayjs(new Date()).subtract(14, 'year').format(),
-      isHumanResources: true,
-    },
-  ];
-  for (const user of users) {
-    const userExists = await userRepository.getOneUser({
-      OR: [
-        { cpf: removeNonNumbersCharacters(user.cpf) },
-        { email: user.email },
-      ],
-    });
+  const user = {
+    name: envConfig.humanResources.name,
+    cpf: envConfig.humanResources.cpf,
+    phone: envConfig.humanResources.phone,
+    email: envConfig.humanResources.email,
+    password: await encryptPassword(envConfig.humanResources.password),
+    department: envConfig.humanResources.department,
+    birthDate: dayjs(envConfig.humanResources.birthDate).format(),
+    isHumanResources: true,
+  };
 
-    if (!userExists) {
-      await userRepository.createUser({
-        ...user,
-        phone: removeNonNumbersCharacters(user.phone),
-        cpf: removeNonNumbersCharacters(user.cpf),
-        birthDate: user.birthDate,
-      });
-    }
+  const userExists = await userRepository.getOneUser({
+    OR: [{ cpf: removeNonNumbersCharacters(user.cpf) }, { email: user.email }],
+  });
+
+  if (!userExists) {
+    await userRepository.createUser({
+      ...user,
+      phone: removeNonNumbersCharacters(user.phone),
+      cpf: removeNonNumbersCharacters(user.cpf),
+    });
+  } else {
+    await userRepository.updateUser(userExists.id, {
+      ...user,
+      cpf: removeNonNumbersCharacters(user.cpf),
+      phone: removeNonNumbersCharacters(user.phone),
+    });
   }
 };

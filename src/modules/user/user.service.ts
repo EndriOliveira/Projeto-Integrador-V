@@ -2,13 +2,12 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { newUserTemplate } from 'src/templates/newUser.template';
 import { generateRandomCode } from 'src/utils/generateRandomCode';
-import { encryptPassword, verifyPassword } from '../../utils/encryption';
+import { encryptPassword } from '../../utils/encryption';
 import { removeNonNumbersCharacters } from '../../utils/removeNonNumbersCharacters';
 import { validateCPF } from '../../utils/validateCpf';
 import { sendMail } from '../sendGrid/sendGrid.service';
@@ -34,19 +33,25 @@ const getUserById = async (id: string): Promise<FindUserResponseDto> => {
 
 const getUsers = async (
   query: FindUsersQueryDto,
+  user: User,
 ): Promise<FindUsersResponseDto> => {
   validateGetUsers(query);
+
+  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
 
   return await userRepository.getUsers(query);
 };
 
 const editUser = async (
   userId: string,
+  hrUser: User,
   updateUserDto: UpdateUserDto,
 ): Promise<UpdateUserResponseDto> => {
   validateUpdateUser(updateUserDto);
 
-  const { cpf, name, password, phone } = updateUserDto;
+  if (!hrUser.isHumanResources) throw new ForbiddenException('Must be HR');
+
+  const { cpf, name, phone } = updateUserDto;
   const user = await userRepository.getOneUser({ id: userId }, [
     'id',
     'name',
@@ -56,12 +61,8 @@ const editUser = async (
     'department',
     'isHumanResources',
     'birthDate',
-    'password',
   ]);
   if (!user) throw new NotFoundException('User Not Found');
-
-  const passwordMatch = await verifyPassword(password, user.password);
-  if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
 
   if (cpf && removeNonNumbersCharacters(cpf) != user.cpf) {
     validateCPF(removeNonNumbersCharacters(cpf));
