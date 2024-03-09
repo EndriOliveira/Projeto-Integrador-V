@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -137,10 +138,22 @@ const createUser = async (
   return newUser;
 };
 
+const deleteUser = async (id: string, user: User): Promise<void> => {
+  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (user.id === id)
+    throw new BadRequestException('You cannot delete yourself');
+
+  const userExists = await userRepository.getOneUser({ id });
+  if (!userExists) throw new NotFoundException('User Not Found');
+
+  await userRepository.deleteUser(id);
+};
+
 const userService = {
   createUser,
   getUserById,
   getUsers,
   editUser,
+  deleteUser,
 };
 export default userService;

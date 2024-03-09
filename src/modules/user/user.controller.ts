@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -116,5 +117,24 @@ export class UserController {
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UpdateUserResponseDto> {
     return await userService.editUser(id, user, updateUserDto);
+  }
+
+  @Delete('/:id')
+  @UseGuards(AuthGuard())
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: 204,
+    description: 'User Deleted Successfully',
+  })
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiNotFoundResponse(httpErrors.notFoundError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteUser(
+    @Param('id') id: string,
+    @GetUser() user: User,
+  ): Promise<void> {
+    await userService.deleteUser(id, user);
   }
 }
