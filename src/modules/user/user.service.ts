@@ -61,6 +61,7 @@ const editUser = async (
     'department',
     'isHumanResources',
     'birthDate',
+    'hourBalance',
   ]);
   if (!user) throw new NotFoundException('User Not Found');
 
@@ -87,6 +88,9 @@ const editUser = async (
     isHumanResources: updateUserDto.isHumanResources
       ? updateUserDto.isHumanResources
       : user.isHumanResources,
+    hourBalance: updateUserDto.hourBalance
+      ? updateUserDto.hourBalance
+      : user.hourBalance,
   });
 };
 

@@ -17,6 +17,8 @@ export class CreateUserResponseDto {
   department: string;
   @ApiProperty({ example: false })
   isHumanResources: boolean;
+  @ApiProperty({ example: 0 })
+  hourBalance: number;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })

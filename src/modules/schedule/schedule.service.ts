@@ -1,28 +1,81 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { User } from '@prisma/client';
 import * as dayjs from 'dayjs';
-import { CreateScheduleDto } from './dto/request/createSchedule.dto';
+import userRepository from '../user/user.repository';
+import { FindSchedulesQueryDto } from './dto/request/getSchedulesQuery.dto';
 import { UpdateScheduleDto } from './dto/request/updateSchedule.dto';
 import { CreateScheduleResponseDto } from './dto/response/createSchedule.response.dto';
+import { GetScheduleResponseDto } from './dto/response/getSchedule.response.dto';
+import { GetSchedulesResponseDto } from './dto/response/getSchedules.response.dto';
 import scheduleRepository from './schedule.repository';
-import { validateCreateSchedule } from './schemas/createSchedule.schema';
+import { validateGetSchedules } from './schemas/getSchedules.schema';
 import { validateUpdateSchedule } from './schemas/updateSchedule.schema';
 
 const createSchedule = async (
   user: User,
-  createScheduleDto: CreateScheduleDto,
 ): Promise<CreateScheduleResponseDto> => {
-  validateCreateSchedule(createScheduleDto);
+  const schedule = await scheduleRepository.getOneSchedule({
+    userId: user.id,
+    OR: [{ intervalEntry: null }, { intervalExit: null }, { exit: null }],
+  });
 
-  const { entryDate, entryTime, exitDate, exitTime } = createScheduleDto;
+  if (schedule) {
+    if (!schedule.intervalEntry)
+      return await scheduleRepository.updateSchedule(schedule.id, {
+        intervalEntry: dayjs(new Date()).subtract(3, 'hours').toDate(),
+      });
+    if (!schedule.intervalExit)
+      return await scheduleRepository.updateSchedule(schedule.id, {
+        intervalExit: dayjs(new Date()).subtract(3, 'hours').toDate(),
+      });
+    if (!schedule.exit) {
+      const updatedSchedule = await scheduleRepository.updateSchedule(
+        schedule.id,
+        {
+          exit: dayjs(new Date()).subtract(3, 'hours').toDate(),
+        },
+      );
 
-  const entry = `${entryDate} ${entryTime}`;
-  const exit = `${exitDate} ${exitTime}`;
+      const diff = dayjs(updatedSchedule.exit).diff(
+        updatedSchedule.entry,
+        'minutes',
+      );
+      const interval = dayjs(updatedSchedule.intervalExit).diff(
+        updatedSchedule.intervalEntry,
+        'minutes',
+      );
+      const worked = diff - interval;
+
+      let userHourBalance = user.hourBalance;
+      let hourBalance = 0;
+
+      if (worked > 7 * 60) {
+        userHourBalance = userHourBalance + (worked - 7 * 60);
+        hourBalance = hourBalance + (worked - 7 * 60);
+      }
+      if (worked < 7 * 60) {
+        userHourBalance = userHourBalance - (7 * 60 - worked);
+        hourBalance = hourBalance - (7 * 60 - worked);
+      }
+
+      if (userHourBalance !== user.hourBalance) {
+        await userRepository.updateUser(user.id, {
+          hourBalance: userHourBalance,
+        });
+      }
+      return await scheduleRepository.updateSchedule(schedule.id, {
+        hourBalance,
+      });
+    }
+  }
 
   return await scheduleRepository.createSchedule(
     user.id,
-    dayjs(entry, { format: 'MM/DD/YYYY HH:mm' }).subtract(2, 'hours').toDate(),
-    dayjs(exit, { format: 'MM/DD/YYYY HH:mm' }).subtract(2, 'hours').toDate(),
+    dayjs(new Date()).subtract(3, 'hours').toDate(),
   );
 };
 
@@ -37,54 +90,136 @@ const updateSchedule = async (
 
   const schedule = await scheduleRepository.getOneSchedule({ id });
   if (!schedule) throw new NotFoundException('Schedule not found');
+  if (
+    !schedule.entry ||
+    !schedule.intervalEntry ||
+    !schedule.intervalExit ||
+    !schedule.exit
+  )
+    throw new BadRequestException('Schedule is not complete');
 
-  const { entryDate, entryTime, exitDate, exitTime } = updateScheduleDto;
+  const { entryTime, intervalEntryTime, intervalExitTime, exitTime } =
+    updateScheduleDto;
 
-  const newEntryDate = entryDate
-    ? entryDate
-    : dayjs(schedule.entry).format('MM/DD/YYYY');
-  const newEntryTime = entryTime
-    ? entryTime
-    : dayjs(schedule.entry).format('HH:mm');
-  const newExitDate = exitDate
-    ? exitDate
-    : dayjs(schedule.exit).format('MM/DD/YYYY');
-  const newExitTime = exitTime
-    ? exitTime
-    : dayjs(schedule.exit).format('HH:mm');
+  if (entryTime) {
+    const newEntry = dayjs(
+      `${dayjs(schedule.entry).format('MM/DD/YYYY')} ${entryTime}`,
+      'HH:mm',
+    )
+      .subtract(3, 'hours')
+      .toDate();
+    await scheduleRepository.updateSchedule(schedule.id, { entry: newEntry });
+  }
 
-  const entry = `${newEntryDate} ${newEntryTime}`;
-  const exit = `${newExitDate} ${newExitTime}`;
+  if (intervalEntryTime) {
+    const newIntervalEntry = dayjs(
+      `${dayjs(schedule.intervalEntry).format(
+        'MM/DD/YYYY',
+      )} ${intervalEntryTime}`,
+      'HH:mm',
+    )
+      .subtract(3, 'hours')
+      .toDate();
+    await scheduleRepository.updateSchedule(schedule.id, {
+      intervalEntry: newIntervalEntry,
+    });
+  }
 
-  console.log(
-    entryTime
-      ? dayjs(entry, { format: 'MM/DD/YYYY HH:mm' })
-          .subtract(2, 'hours')
-          .toDate()
-      : dayjs(entry, { format: 'MM/DD/YYYY HH:mm' }).toDate(),
+  if (intervalExitTime) {
+    const newIntervalExit = dayjs(
+      `${dayjs(schedule.intervalExit).format(
+        'MM/DD/YYYY',
+      )} ${intervalExitTime}`,
+      'HH:mm',
+    )
+      .subtract(3, 'hours')
+      .toDate();
+    await scheduleRepository.updateSchedule(schedule.id, {
+      intervalExit: newIntervalExit,
+    });
+  }
+
+  if (exitTime) {
+    const newExit = dayjs(
+      `${dayjs(schedule.exit).format('MM/DD/YYYY')} ${exitTime}`,
+      'HH:mm',
+    )
+      .subtract(3, 'hours')
+      .toDate();
+    await scheduleRepository.updateSchedule(schedule.id, { exit: newExit });
+  }
+
+  const updatedSchedule = await scheduleRepository.getOneSchedule({ id });
+
+  const diff = dayjs(updatedSchedule.exit).diff(
+    updatedSchedule.entry,
+    'minutes',
   );
-  console.log(
-    exitTime
-      ? dayjs(exit, { format: 'MM/DD/YYYY HH:mm' })
-          .subtract(2, 'hours')
-          .toDate()
-      : dayjs(exit, { format: 'MM/DD/YYYY HH:mm' }).toDate(),
+  const interval = dayjs(updatedSchedule.intervalExit).diff(
+    updatedSchedule.intervalEntry,
+    'minutes',
   );
+  const worked = diff - interval;
 
-  return await scheduleRepository.updateSchedule(id, {
-    entry: entryTime
-      ? dayjs(entry, { format: 'MM/DD/YYYY HH:mm' })
-          .subtract(2, 'hours')
-          .toDate()
-      : dayjs(entry, { format: 'MM/DD/YYYY HH:mm' }).toDate(),
-    exit: exitTime
-      ? dayjs(exit, { format: 'MM/DD/YYYY HH:mm' })
-          .subtract(2, 'hours')
-          .toDate()
-      : dayjs(exit, { format: 'MM/DD/YYYY HH:mm' }).toDate(),
+  let userHourBalance = user.hourBalance;
+  let hourBalance = 0;
+
+  if (worked > 7 * 60) {
+    userHourBalance = userHourBalance + (worked - 7 * 60);
+    hourBalance = hourBalance + (worked - 7 * 60);
+  }
+
+  if (worked < 7 * 60) {
+    userHourBalance = userHourBalance - (7 * 60 - worked);
+    hourBalance = hourBalance - (7 * 60 - worked);
+  }
+
+  if (hourBalance !== schedule.hourBalance) {
+    const updatedSchedule = await scheduleRepository.updateSchedule(
+      schedule.id,
+      {
+        hourBalance,
+      },
+    );
+
+    userHourBalance = user.hourBalance - schedule.hourBalance + hourBalance;
+    await userRepository.updateUser(user.id, { hourBalance: userHourBalance });
+    return updatedSchedule;
+  }
+  return updatedSchedule;
+};
+
+const deleteSchedule = async (user: User, id: string): Promise<void> => {
+  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+
+  const schedule = await scheduleRepository.getOneSchedule({ id });
+  if (!schedule) throw new NotFoundException('Schedule not found');
+  await scheduleRepository.deleteSchedule(id);
+  await userRepository.updateUser(user.id, {
+    hourBalance: user.hourBalance - schedule.hourBalance,
   });
 };
 
-const scheduleService = { createSchedule, updateSchedule };
+const listSchedulesByUser = async (
+  userId: string,
+  query: FindSchedulesQueryDto,
+): Promise<GetSchedulesResponseDto> => {
+  validateGetSchedules(query);
+  return await scheduleRepository.getScheduleByUser(userId, query);
+};
+
+const getSchedule = async (id: string): Promise<GetScheduleResponseDto> => {
+  const schedule = await scheduleRepository.getOneSchedule({ id });
+  if (!schedule) throw new NotFoundException('Schedule not found');
+  return schedule;
+};
+
+const scheduleService = {
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+  listSchedulesByUser,
+  getSchedule,
+};
 
 export default scheduleService;

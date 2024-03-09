@@ -6,7 +6,13 @@ export class CreateScheduleResponseDto {
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
   entry: Date;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
+  intervalEntry: Date;
+  @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
+  intervalExit: Date;
+  @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
   exit: Date;
+  @ApiProperty({ example: 0 })
+  hourBalance: number;
   @ApiProperty({ example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' })
   userId: string;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })

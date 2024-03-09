@@ -20,7 +20,6 @@ async function bootstrap() {
         - Natalia Dinareli
         - Rael Souza
         - Raquel Aparecida
-        - Vitor Manoel
       `,
     )
     .setVersion('1.0')

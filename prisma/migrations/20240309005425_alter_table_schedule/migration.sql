@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Schedule" ADD COLUMN     "hourBalance" DOUBLE PRECISION NOT NULL DEFAULT 0;

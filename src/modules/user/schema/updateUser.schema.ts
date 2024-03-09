@@ -17,6 +17,7 @@ export const validateUpdateUser = (body: UpdateUserDto) => {
         'Invalid date format. Use MM/DD/YYYY',
       )
       .optional(),
+    hourBalance: z.number().optional(),
   });
   const validate = schema.safeParse(body);
   if (!validate['success'])

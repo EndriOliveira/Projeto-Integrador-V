@@ -13,4 +13,6 @@ export class UpdateUserDto {
   isHumanResources?: boolean;
   @ApiProperty({ example: '01/31/2001' })
   birthDate?: string;
+  @ApiProperty({ example: 0 })
+  hourBalance?: number;
 }
