@@ -5,7 +5,7 @@
 [circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
 [circleci-url]: https://circleci.com/gh/nestjs/nest
 
-  <p align="center">Projeto Integrador: análise de soluções de tecnologia da informação</p>
+  <p align="center">Projeto Integrador: Análise de Soluções de Tecnologia da Informação</p>
   
 ## Turma - 5 NC 5S20222 
 
