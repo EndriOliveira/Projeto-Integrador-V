@@ -33,4 +33,6 @@ export const userSeeder = async () => {
       phone: removeNonNumbersCharacters(user.phone),
     });
   }
+
+  console.log('User seeded');
 };

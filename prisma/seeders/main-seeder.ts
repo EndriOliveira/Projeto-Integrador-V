@@ -1,5 +1,9 @@
 import { userSeeder } from './user-seeder';
 
 (async () => {
-  await userSeeder();
+  try {
+    await userSeeder();
+  } catch {
+    console.log('Error seeding users');
+  }
 })();
