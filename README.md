@@ -58,3 +58,8 @@ $ npm run start:prod
 
 ## Licença
 [Licença MIT](LICENSE)
+
+## Links
+- <a href="https://www.figma.com/file/Uk1FSjLf7CGRasDcUOrM5W/PIV?type=design&node-id=0-1&mode=design">Figma</a>
+- <a href="https://github.com/EndriOliveira/Projeto-Integrador-V-Frontend">Frontend</a>
+- <a href="https://github.com/EndriOliveira/Projeto-Integrador-V">Backend</a>
