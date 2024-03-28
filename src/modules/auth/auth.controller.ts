@@ -48,7 +48,7 @@ export class AuthController {
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @HttpCode(HttpStatus.OK)
   async me(@GetUser() user: User): Promise<MeResponseDto> {
-    return user;
+    return await authService.me(user);
   }
 
   @Post('/sign-in')

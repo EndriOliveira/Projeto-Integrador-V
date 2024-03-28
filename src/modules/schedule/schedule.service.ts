@@ -88,7 +88,7 @@ const updateSchedule = async (
 
   if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
 
-  const schedule = await scheduleRepository.getOneSchedule({ id });
+  let schedule = await scheduleRepository.getOneSchedule({ id });
   if (!schedule) throw new NotFoundException('Schedule not found');
   if (
     !schedule.entry ||
@@ -98,8 +98,45 @@ const updateSchedule = async (
   )
     throw new BadRequestException('Schedule is not complete');
 
-  const { entryTime, intervalEntryTime, intervalExitTime, exitTime } =
-    updateScheduleDto;
+  const {
+    entryTime,
+    intervalEntryTime,
+    intervalExitTime,
+    exitTime,
+    intervalEntryDate,
+    intervalExitDate,
+    exitDate,
+  } = updateScheduleDto;
+
+  if (intervalEntryDate) {
+    const newIntervalEntry = dayjs(
+      `${intervalEntryDate} ${dayjs(schedule.intervalEntry).format('HH:mm')}`,
+      'MM/DD/YYYY HH:mm',
+    ).toDate();
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
+      intervalEntry: newIntervalEntry,
+    });
+  }
+
+  if (intervalExitDate) {
+    const newIntervalExit = dayjs(
+      `${intervalExitDate} ${dayjs(schedule.intervalExit).format('HH:mm')}`,
+      'MM/DD/YYYY HH:mm',
+    ).toDate();
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
+      intervalExit: newIntervalExit,
+    });
+  }
+
+  if (exitDate) {
+    const newExit = dayjs(
+      `${exitDate} ${dayjs(schedule.exit).format('HH:mm')}`,
+      'MM/DD/YYYY HH:mm',
+    ).toDate();
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
+      exit: newExit,
+    });
+  }
 
   if (entryTime) {
     const newEntry = dayjs(
@@ -108,7 +145,9 @@ const updateSchedule = async (
     )
       .subtract(3, 'hours')
       .toDate();
-    await scheduleRepository.updateSchedule(schedule.id, { entry: newEntry });
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
+      entry: newEntry,
+    });
   }
 
   if (intervalEntryTime) {
@@ -120,7 +159,7 @@ const updateSchedule = async (
     )
       .subtract(3, 'hours')
       .toDate();
-    await scheduleRepository.updateSchedule(schedule.id, {
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
       intervalEntry: newIntervalEntry,
     });
   }
@@ -134,7 +173,7 @@ const updateSchedule = async (
     )
       .subtract(3, 'hours')
       .toDate();
-    await scheduleRepository.updateSchedule(schedule.id, {
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
       intervalExit: newIntervalExit,
     });
   }
@@ -146,7 +185,9 @@ const updateSchedule = async (
     )
       .subtract(3, 'hours')
       .toDate();
-    await scheduleRepository.updateSchedule(schedule.id, { exit: newExit });
+    schedule = await scheduleRepository.updateSchedule(schedule.id, {
+      exit: newExit,
+    });
   }
 
   const updatedSchedule = await scheduleRepository.getOneSchedule({ id });

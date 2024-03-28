@@ -3,7 +3,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { RefreshToken, User } from '@prisma/client';
+import { RefreshToken, Schedule, User } from '@prisma/client';
 import envConfig from '../../config/env.config';
 import { MessageResponseDto } from '../../shared/dto/message.response.dto';
 import { forgotPasswordTemplate } from '../../templates/forgotPassword.template';
@@ -12,6 +12,7 @@ import { generateJwt } from '../../utils/jwt';
 import codeService from '../code/code.service';
 import refreshTokenRepository from '../refreshToken/refreshToken.repository';
 import refreshTokenService from '../refreshToken/refreshToken.service';
+import scheduleRepository from '../schedule/schedule.repository';
 import { sendMail } from '../sendGrid/sendGrid.service';
 import userRepository from '../user/user.repository';
 import userService from '../user/user.service';
@@ -19,11 +20,34 @@ import { ChangePasswordDto } from './dto/request/changePassword.dto';
 import { CredentialsDto } from './dto/request/credentials.dto';
 import { ForgotPasswordDto } from './dto/request/forgotPassword.dto';
 import { ResetPasswordDto } from './dto/request/resetPassword.dto';
+import { MeResponseDto } from './dto/response/me.response.dto';
 import { SignInResponseDto } from './dto/response/signIn.response.dto';
 import { validateChangePassword } from './schemas/changePassword.schema';
 import { validateSignIn } from './schemas/credentials.schema';
 import { validateForgotPassword } from './schemas/forgotPassword.schema';
 import { validateResetPassword } from './schemas/resetPassword.schema';
+
+const me = async (user: User): Promise<MeResponseDto> => {
+  const schedule = (await scheduleRepository.getOneSchedule(
+    {
+      AND: [{ userId: user.id }, { exit: null }],
+    },
+    [
+      'id',
+      'entry',
+      'intervalEntry',
+      'intervalExit',
+      'exit',
+      'createdAt',
+      'updatedAt',
+    ],
+  )) as Schedule;
+
+  return {
+    ...user,
+    schedule: schedule || null,
+  };
+};
 
 const signIn = async (
   credentialsDto: CredentialsDto,
@@ -151,4 +175,5 @@ export const authService = {
   forgotPassword,
   resetPassword,
   changePassword,
+  me,
 };

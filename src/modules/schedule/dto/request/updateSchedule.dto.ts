@@ -9,4 +9,10 @@ export class UpdateScheduleDto {
   intervalExitTime?: string;
   @ApiProperty({ example: '00:00' })
   exitTime?: string;
+  @ApiProperty({ example: '01/31/2001' })
+  intervalEntryDate?: string;
+  @ApiProperty({ example: '01/31/2001' })
+  intervalExitDate?: string;
+  @ApiProperty({ example: '01/31/2001' })
+  exitDate?: string;
 }

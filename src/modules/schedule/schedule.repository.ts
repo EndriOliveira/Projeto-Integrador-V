@@ -97,6 +97,7 @@ const getScheduleByUser = async (
   const where = {
     AND: [
       { userId },
+      { exit: { not: null } },
       {
         createdAt:
           rangeStart && rangeEnd
