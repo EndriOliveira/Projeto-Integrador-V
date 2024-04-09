@@ -9,6 +9,6 @@ export const sendMail = async (
     SendGrid.setApiKey(envConfig.sendGrid.key);
     return await SendGrid.send(mail);
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };

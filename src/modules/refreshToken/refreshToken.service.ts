@@ -10,14 +10,15 @@ const getRefreshTokenById = async (id: string): Promise<RefreshToken> => {
   const refreshToken = await refreshTokenRepository.getOneRefreshToken({
     id,
   });
-  if (!refreshToken) throw new NotFoundException('Refresh Token Not Found');
+  if (!refreshToken)
+    throw new NotFoundException('Refresh Token Não Encontrado');
 
   return refreshToken;
 };
 
 const createRefreshToken = async (userId: string): Promise<string> => {
   const user = await userService.getUserById(userId);
-  if (!user) throw new NotFoundException('User Not Found');
+  if (!user) throw new NotFoundException('Usuário Não Encontrado');
 
   const refreshToken = await refreshTokenRepository.createRefreshToken({
     userId,
@@ -41,19 +42,19 @@ const createNewAccessToken = async (
     id,
   });
   if (!refreshTokenExists)
-    throw new UnauthorizedException('Invalid Refresh Token');
+    throw new UnauthorizedException('Refresh Token Inválido');
 
   try {
     verifyJwt(envConfig.jwt.refreshSecret, token);
   } catch {
     await refreshTokenRepository.deleteOneRefreshToken({ id });
-    throw new UnauthorizedException('Refresh Token has been expired');
+    throw new UnauthorizedException('Refresh Token Expirado');
   }
 
   const user = await userService.getUserById(userId);
   if (!user) {
     await refreshTokenRepository.deleteOneRefreshToken({ id });
-    throw new NotFoundException('User Not Found');
+    throw new NotFoundException('Usuário Não Encontrado');
   }
 
   return {

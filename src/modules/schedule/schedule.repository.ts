@@ -20,7 +20,7 @@ const createSchedule = async (
       },
     });
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -43,7 +43,7 @@ const getOneSchedule = async <Key extends keyof Schedule>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<Schedule, Key>;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -68,7 +68,7 @@ const updateSchedule = async (
       },
     })) as Schedule;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -76,7 +76,7 @@ const deleteSchedule = async (id: string): Promise<Schedule> => {
   try {
     return await client.schedule.delete({ where: { id } });
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -128,7 +128,7 @@ const getScheduleByUser = async (
       pages: Number(totalPages(count, limit)),
     };
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 

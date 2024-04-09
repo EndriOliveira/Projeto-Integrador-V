@@ -60,10 +60,10 @@ const signIn = async (
     'password',
     'updatedAt',
   ]);
-  if (!user) throw new UnauthorizedException('Invalid Credentials');
+  if (!user) throw new UnauthorizedException('Credenciais Inválidas');
 
   const passwordMatch = await verifyPassword(password, user.password);
-  if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
+  if (!passwordMatch) throw new UnauthorizedException('Credenciais Inválidas');
 
   return {
     accessToken: generateJwt(
@@ -84,18 +84,18 @@ const logout = async (
     id,
   });
   if (!refreshTokenExists)
-    throw new UnauthorizedException('Invalid Refresh Token');
+    throw new UnauthorizedException('Refresh Token Inválido');
 
   const user = await userService.getUserById(userId);
   if (!user) {
     await refreshTokenRepository.deleteOneRefreshToken({ id });
-    throw new NotFoundException('User Not Found');
+    throw new NotFoundException('Usuário Não Encontrado');
   }
 
   await refreshTokenRepository.deleteOneRefreshToken({ id });
 
   return {
-    message: 'Logged out successfully',
+    message: 'Efetuou o logout com sucesso',
   };
 };
 
@@ -110,7 +110,7 @@ const forgotPassword = async (
     'email',
     'name',
   ]);
-  if (!user) throw new UnauthorizedException('Invalid Credentials');
+  if (!user) throw new UnauthorizedException('Credenciais Inválidas');
 
   const code = await codeService.createCode(user.id);
 
@@ -121,7 +121,7 @@ const forgotPassword = async (
   });
   await sendMail(mail);
   return {
-    message: 'Please verify your email for further information',
+    message: 'Por favor, verifique seu e-mail para redefinir sua senha',
   };
 };
 
@@ -132,7 +132,7 @@ const resetPassword = async (
 
   const { code, password, passwordConfirmation } = resetPasswordDto;
   if (password !== passwordConfirmation)
-    throw new BadRequestException('Passwords do not match');
+    throw new BadRequestException('Senhas não são iguais');
 
   const userCode = await codeService.validateCode(code);
   await userRepository.updateUser(userCode.userId, {
@@ -140,7 +140,7 @@ const resetPassword = async (
   });
 
   return {
-    message: 'Password changed successfully',
+    message: 'Senha alterada com sucesso',
   };
 };
 
@@ -153,13 +153,13 @@ const changePassword = async (
   const { password, newPassword, newPasswordConfirmation } = changePasswordDto;
 
   if (newPassword !== newPasswordConfirmation)
-    throw new BadRequestException('Passwords do not match');
+    throw new BadRequestException('Senhas não são iguais');
 
   const user = await userRepository.getOneUser({ id: userId });
-  if (!user) throw new UnauthorizedException('Invalid Credentials');
+  if (!user) throw new UnauthorizedException('Credenciais Inválidas');
 
   const passwordMatch = await verifyPassword(password, user.password);
-  if (!passwordMatch) throw new UnauthorizedException('Invalid Credentials');
+  if (!passwordMatch) throw new UnauthorizedException('Credenciais Inválidas');
 
   await userRepository.updateUser(userId, {
     password: await encryptPassword(newPassword),

@@ -11,7 +11,7 @@ export const validateResetPassword = (body: ResetPasswordDto) => {
       .min(6)
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
-        'Password must have minimum six characters, at least one uppercase letter, one lowercase letter, one number and one special character',
+        'A senha deve ter no mínimo 6 caracteres, pelo menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial',
       )
       .max(255),
     passwordConfirmation: z.string().trim().max(255),

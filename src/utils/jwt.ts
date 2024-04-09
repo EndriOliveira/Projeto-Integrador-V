@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { sign, verify, JwtPayload } from 'jsonwebtoken';
+import { JwtPayload, sign, verify } from 'jsonwebtoken';
 
 export const generateJwt = (
   secret: string,
@@ -18,6 +18,6 @@ export const verifyJwt = (
   try {
     return verify(token, secret);
   } catch (error) {
-    throw new UnauthorizedException('Invalid Refresh Token');
+    throw new UnauthorizedException('Token Inválido');
   }
 };

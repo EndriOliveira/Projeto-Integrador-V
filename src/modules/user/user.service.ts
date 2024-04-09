@@ -26,7 +26,7 @@ import userRepository from './user.repository';
 
 const getUserById = async (id: string): Promise<FindUserResponseDto> => {
   const user = await userRepository.getOneUser({ id });
-  if (!user) throw new NotFoundException('User Not Found');
+  if (!user) throw new NotFoundException('Usuário Não Encontrado');
 
   delete user.password;
   return user;
@@ -38,7 +38,8 @@ const getUsers = async (
 ): Promise<FindUsersResponseDto> => {
   validateGetUsers(query);
 
-  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (!user.isHumanResources)
+    throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   return await userRepository.getUsers(query);
 };
@@ -50,7 +51,8 @@ const editUser = async (
 ): Promise<UpdateUserResponseDto> => {
   validateUpdateUser(updateUserDto);
 
-  if (!hrUser.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (!hrUser.isHumanResources)
+    throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   const { cpf, name, phone } = updateUserDto;
   const user = await userRepository.getOneUser({ id: userId }, [
@@ -64,7 +66,7 @@ const editUser = async (
     'birthDate',
     'hourBalance',
   ]);
-  if (!user) throw new NotFoundException('User Not Found');
+  if (!user) throw new NotFoundException('Usuário Não Encontrado');
 
   if (cpf && removeNonNumbersCharacters(cpf) != user.cpf) {
     validateCPF(removeNonNumbersCharacters(cpf));
@@ -73,7 +75,7 @@ const editUser = async (
       { cpf: removeNonNumbersCharacters(cpf) },
       ['id', 'cpf'],
     );
-    if (cpfExists) throw new ConflictException('CPF Already Exists');
+    if (cpfExists) throw new ConflictException('CPF já existe');
   }
 
   return await userRepository.updateUser(user.id, {
@@ -101,7 +103,8 @@ const createUser = async (
 ): Promise<CreateUserResponseDto> => {
   validateCreateUser(createUserDto);
 
-  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (!user.isHumanResources)
+    throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   validateCPF(removeNonNumbersCharacters(createUserDto.cpf));
 
@@ -111,7 +114,7 @@ const createUser = async (
       { email: createUserDto.email },
     ],
   });
-  if (userExists) throw new ConflictException('User Already Exists');
+  if (userExists) throw new ConflictException('Usuário já existe');
 
   const password = generateRandomCode({
     length: 6,
@@ -139,12 +142,13 @@ const createUser = async (
 };
 
 const deleteUser = async (id: string, user: User): Promise<void> => {
-  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (!user.isHumanResources)
+    throw new ForbiddenException('Usuário deve pertencer ao RH');
   if (user.id === id)
-    throw new BadRequestException('You cannot delete yourself');
+    throw new BadRequestException('Não é possível deletar a si mesmo');
 
   const userExists = await userRepository.getOneUser({ id });
-  if (!userExists) throw new NotFoundException('User Not Found');
+  if (!userExists) throw new NotFoundException('Usuário Não Encontrado');
 
   await userRepository.deleteUser(id);
 };

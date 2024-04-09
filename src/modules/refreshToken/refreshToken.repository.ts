@@ -17,7 +17,7 @@ const createRefreshToken = async (
       },
     });
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -31,7 +31,7 @@ const getOneRefreshToken = async <Key extends keyof RefreshToken>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<RefreshToken, Key>;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -46,7 +46,7 @@ const updateManyRefreshToken = async (
     });
     return result.count;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -56,7 +56,7 @@ const deleteOneRefreshToken = async (
   try {
     return await client.refreshToken.delete({ where });
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 

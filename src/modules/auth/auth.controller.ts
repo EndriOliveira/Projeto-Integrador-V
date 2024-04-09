@@ -58,6 +58,7 @@ export class AuthController {
     description: 'Logged in successfully',
     type: SignInResponseDto,
   })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)

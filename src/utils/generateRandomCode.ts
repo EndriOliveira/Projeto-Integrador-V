@@ -24,11 +24,11 @@ export const generateRandomCode = (
 
     if (!upperCaseLetters && !lowerCaseLetters && !numbers)
       throw new BadRequestException(
-        'Random code must contains at least 1 group of characters',
+        'Código aleatório deve conter pelo menos um tipo de caractere',
       );
     if (length < 6)
       throw new BadRequestException(
-        'Random code must contains at least 6 characters',
+        'Código aleatório deve conter no mínimo 6 caracteres',
       );
 
     if (upperCaseLetters) characters += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';

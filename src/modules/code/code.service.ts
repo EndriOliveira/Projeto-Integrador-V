@@ -7,7 +7,7 @@ import codeRepository from './code.repository';
 
 const createCode = async (userId: string): Promise<string> => {
   const user = await userService.getUserById(userId);
-  if (!user) throw new NotFoundException('User Not Found');
+  if (!user) throw new NotFoundException('Usuário Não Encontrado');
 
   let code = generateRandomCode({
     length: 6,
@@ -46,7 +46,7 @@ const validateCode = async (code: string): Promise<Code> => {
     'userId',
     'createdAt',
   ]);
-  if (!userCode) throw new NotFoundException('Code Not Found');
+  if (!userCode) throw new NotFoundException('Código Não Encontrado');
 
   await userService.getUserById(userCode.userId);
 
@@ -55,7 +55,7 @@ const validateCode = async (code: string): Promise<Code> => {
   const diff = now.diff(codeDate, 'minute');
   if (diff >= 60) {
     await codeRepository.updateManyCode({ code }, { active: false });
-    throw new UnauthorizedException('Code has been expired');
+    throw new UnauthorizedException('Código Expirado');
   }
 
   await codeRepository.updateManyCode({ code }, { active: false });

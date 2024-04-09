@@ -15,7 +15,7 @@ const createCode = async (createCodeDto: CreateCodeDto): Promise<Code> => {
       },
     });
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -36,7 +36,7 @@ const getOneCode = async <Key extends keyof Code>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<Code, Key>;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -51,7 +51,7 @@ const updateManyCode = async (
     });
     return result.count;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 

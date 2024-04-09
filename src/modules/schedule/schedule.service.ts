@@ -86,17 +86,18 @@ const updateSchedule = async (
 ): Promise<CreateScheduleResponseDto> => {
   validateUpdateSchedule(updateScheduleDto);
 
-  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (!user.isHumanResources)
+    throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   let schedule = await scheduleRepository.getOneSchedule({ id });
-  if (!schedule) throw new NotFoundException('Schedule not found');
+  if (!schedule) throw new NotFoundException('Registro não encontrado');
   if (
     !schedule.entry ||
     !schedule.intervalEntry ||
     !schedule.intervalExit ||
     !schedule.exit
   )
-    throw new BadRequestException('Schedule is not complete');
+    throw new BadRequestException('Schedule Não está Completo');
 
   const {
     entryTime,
@@ -231,10 +232,11 @@ const updateSchedule = async (
 };
 
 const deleteSchedule = async (user: User, id: string): Promise<void> => {
-  if (!user.isHumanResources) throw new ForbiddenException('Must be HR');
+  if (!user.isHumanResources)
+    throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   const schedule = await scheduleRepository.getOneSchedule({ id });
-  if (!schedule) throw new NotFoundException('Schedule not found');
+  if (!schedule) throw new NotFoundException('Registro não encontrado');
   await scheduleRepository.deleteSchedule(id);
   await userRepository.updateUser(user.id, {
     hourBalance: user.hourBalance - schedule.hourBalance,
@@ -251,7 +253,7 @@ const listSchedulesByUser = async (
 
 const getSchedule = async (id: string): Promise<GetScheduleResponseDto> => {
   const schedule = await scheduleRepository.getOneSchedule({ id });
-  if (!schedule) throw new NotFoundException('Schedule not found');
+  if (!schedule) throw new NotFoundException('Registro não encontrado');
   return schedule;
 };
 

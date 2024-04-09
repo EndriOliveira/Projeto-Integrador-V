@@ -31,7 +31,7 @@ const getOneUser = async <Key extends keyof User>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<User, Key>;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -75,7 +75,7 @@ const createUser = async (createUserDto: CreateUserDto): Promise<User> => {
       },
     })) as User;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -138,7 +138,7 @@ const getUsers = async (
       pages: Number(totalPages(count, limit)),
     };
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -165,7 +165,7 @@ const updateUser = async (
       },
     })) as User;
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 
@@ -175,7 +175,7 @@ const deleteUser = async (userId: string): Promise<void> => {
       where: { id: userId },
     });
   } catch (error) {
-    throw new InternalServerErrorException('Internal Server Error');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
 

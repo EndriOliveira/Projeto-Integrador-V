@@ -11,7 +11,7 @@ export const validateChangePassword = (body: ChangePasswordDto) => {
       .min(6)
       .regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
-        'Password must have minimum 6 characters, at least 1 uppercase letter, 1 lowercase letter, 1 number and 1 special character',
+        'A senha deve ter no mínimo 6 caracteres, pelo menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial',
       )
       .max(255),
     newPasswordConfirmation: z.string().trim().max(255),
