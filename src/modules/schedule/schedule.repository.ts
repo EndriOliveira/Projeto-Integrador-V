@@ -1,7 +1,6 @@
 import { InternalServerErrorException } from '@nestjs/common';
 import { Prisma, Schedule } from '@prisma/client';
 import * as dayjs from 'dayjs';
-import { totalPages } from 'src/utils/totalPages';
 import { v4 as uuidV4 } from 'uuid';
 import client from '../../database/client';
 import { FindSchedulesQueryDto } from './dto/request/getSchedulesQuery.dto';
