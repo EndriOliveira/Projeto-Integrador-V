@@ -84,28 +84,21 @@ const getScheduleByUser = async (
   userId: string,
   query: FindSchedulesQueryDto,
 ): Promise<GetSchedulesResponseDto> => {
-  let { limit, page, rangeStart, rangeEnd } = query;
-  const { sortBy, sortType } = query;
-  limit = Number(limit) || 10;
-  page = Number(page) || 1;
+  let { rangeStart, rangeEnd } = query;
 
-  rangeStart = rangeStart
-    ? dayjs(rangeStart).subtract(3, 'hours').toDate()
-    : null;
-  rangeEnd = rangeEnd ? dayjs(rangeEnd).subtract(3, 'hours').toDate() : null;
+  rangeStart = dayjs(rangeStart).subtract(3, 'hours').toDate();
+  rangeEnd = dayjs(rangeEnd).add(21, 'hours').toDate();
+
+  console.log(rangeStart, rangeEnd);
 
   const where = {
     AND: [
       { userId },
-      { exit: { not: null } },
       {
-        createdAt:
-          rangeStart && rangeEnd
-            ? {
-                gte: dayjs(rangeStart).toDate(),
-                lte: dayjs(rangeEnd).toDate(),
-              }
-            : undefined,
+        createdAt: {
+          gte: dayjs(rangeStart).toDate(),
+          lte: dayjs(rangeEnd).toDate(),
+        },
       },
     ],
   } as Prisma.ScheduleWhereInput;
@@ -114,9 +107,7 @@ const getScheduleByUser = async (
     const [schedules, count] = await client.$transaction([
       client.schedule.findMany({
         where,
-        skip: (Number(page) - 1) * Number(limit),
-        take: Number(limit),
-        orderBy: sortBy && sortType ? { [sortBy]: sortType } : undefined,
+        orderBy: { createdAt: 'asc' },
       }),
       client.schedule.count({ where }),
     ]);
@@ -124,8 +115,6 @@ const getScheduleByUser = async (
     return {
       schedules,
       total: Number(count),
-      page: Number(page),
-      pages: Number(totalPages(count, limit)),
     };
   } catch (error) {
     throw new InternalServerErrorException('Erro Interno de Servidor');

@@ -20,8 +20,4 @@ export class GetSchedulesResponseDto {
   schedules: Schedule[];
   @ApiProperty({ example: 1 })
   total: number;
-  @ApiProperty({ example: 1 })
-  page: number;
-  @ApiProperty({ example: 1 })
-  pages: number;
 }

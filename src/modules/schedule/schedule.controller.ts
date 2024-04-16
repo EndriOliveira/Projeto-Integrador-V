@@ -104,6 +104,7 @@ export class ScheduleController {
     description: 'Schedules found successfully',
     type: GetSchedulesResponseDto,
   })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)

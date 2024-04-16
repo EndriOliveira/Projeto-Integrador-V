@@ -1,24 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { BaseQueryParametersDto } from '../../../../shared/dto/baseQueryParameters.dto';
 
-export class FindSchedulesQueryDto extends BaseQueryParametersDto {
+export class FindSchedulesQueryDto {
   @ApiProperty({
-    required: false,
+    required: true,
     description: 'Range start date',
     example: '01/31/2001',
   })
-  rangeStart?: Date;
+  rangeStart: Date;
   @ApiProperty({
-    required: false,
+    required: true,
     description: 'Range end date',
     example: '01/31/2001',
   })
-  rangeEnd?: Date;
-  @ApiProperty({
-    required: false,
-    description: 'Field to be ordered by',
-    enum: ['createdAt', 'hourBalance'],
-    default: 'createdAt',
-  })
-  sortBy?: string;
+  rangeEnd: Date;
 }

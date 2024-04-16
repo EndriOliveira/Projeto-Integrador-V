@@ -2,7 +2,6 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { Prisma, User } from '@prisma/client';
 import { v4 as uuidV4 } from 'uuid';
 import client from '../../database/client';
-import { removeNonNumbersCharacters } from '../../utils/removeNonNumbersCharacters';
 import { totalPages } from '../../utils/totalPages';
 import { CreateUserDto } from './dto/request/createUser.dto';
 import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
@@ -83,29 +82,37 @@ const getUsers = async (
   query: FindUsersQueryDto,
 ): Promise<FindUsersResponseDto> => {
   let { limit, page } = query;
-  const { sortBy, sortType, cpf, email, name, phone, department } = query;
+  const { sortBy, sortType, search } = query;
   limit = Number(limit) || 10;
   page = Number(page) || 1;
 
-  const where = {
-    AND: [
-      { email: email ? { contains: email, mode: 'insensitive' } : undefined },
-      { name: name ? { contains: name, mode: 'insensitive' } : undefined },
-      {
-        department: department
-          ? { contains: department, mode: 'insensitive' }
-          : undefined,
-      },
-      {
-        cpf: cpf ? { contains: removeNonNumbersCharacters(cpf) } : undefined,
-      },
-      {
-        phone: phone
-          ? { contains: removeNonNumbersCharacters(phone) }
-          : undefined,
-      },
-    ],
-  } as Prisma.UserWhereInput;
+  const where = search
+    ? ({
+        OR: [
+          {
+            email: search
+              ? { contains: search, mode: 'insensitive' }
+              : undefined,
+          },
+          {
+            name: search
+              ? { contains: search, mode: 'insensitive' }
+              : undefined,
+          },
+          {
+            department: search
+              ? { contains: search, mode: 'insensitive' }
+              : undefined,
+          },
+          {
+            cpf: search ? { contains: search } : undefined,
+          },
+          {
+            phone: search ? { contains: search } : undefined,
+          },
+        ],
+      } as Prisma.UserWhereInput)
+    : ({} as Prisma.UserWhereInput);
 
   try {
     const [users, count] = await client.$transaction([
