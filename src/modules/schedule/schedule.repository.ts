@@ -88,8 +88,6 @@ const getScheduleByUser = async (
   rangeStart = dayjs(rangeStart).subtract(3, 'hours').toDate();
   rangeEnd = dayjs(rangeEnd).add(21, 'hours').toDate();
 
-  console.log(rangeStart, rangeEnd);
-
   const where = {
     AND: [
       { userId },
