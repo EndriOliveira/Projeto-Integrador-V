@@ -91,6 +91,7 @@ const getScheduleByUser = async (
   const where = {
     AND: [
       { userId },
+      { exit: { not: null } },
       {
         createdAt: {
           gte: dayjs(rangeStart).toDate(),
