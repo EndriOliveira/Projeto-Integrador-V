@@ -104,7 +104,7 @@ const getScheduleByUser = async (
     const [schedules, count] = await client.$transaction([
       client.schedule.findMany({
         where,
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
       }),
       client.schedule.count({ where }),
     ]);
