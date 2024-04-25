@@ -55,9 +55,23 @@ const updateManyCode = async (
   }
 };
 
+const deleteManyCode = async (
+  where: Prisma.CodeWhereInput,
+): Promise<number> => {
+  try {
+    const result = await client.code.deleteMany({
+      where,
+    });
+    return result.count;
+  } catch (error) {
+    throw new InternalServerErrorException('Erro Interno de Servidor');
+  }
+};
+
 const codeRepository = {
   createCode,
   getOneCode,
+  deleteManyCode,
   updateManyCode,
 };
 

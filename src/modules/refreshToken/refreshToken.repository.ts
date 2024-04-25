@@ -50,6 +50,19 @@ const updateManyRefreshToken = async (
   }
 };
 
+const deleteManyRefreshToken = async (
+  where: Prisma.RefreshTokenWhereInput,
+): Promise<number> => {
+  try {
+    const result = await client.refreshToken.deleteMany({
+      where,
+    });
+    return result.count;
+  } catch (error) {
+    throw new InternalServerErrorException('Erro Interno de Servidor');
+  }
+};
+
 const deleteOneRefreshToken = async (
   where: Prisma.RefreshTokenWhereUniqueInput,
 ): Promise<RefreshToken> => {
@@ -64,6 +77,7 @@ const refreshTokenRepository = {
   createRefreshToken,
   getOneRefreshToken,
   updateManyRefreshToken,
+  deleteManyRefreshToken,
   deleteOneRefreshToken,
 };
 

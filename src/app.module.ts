@@ -3,6 +3,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PassportModule } from '@nestjs/passport';
 import { WinstonModule } from 'nest-winston';
 import { AppController } from './app.controller';
+import { CronService } from './common/cron/cron.service';
 import { winstonConfig } from './config/winston.config';
 import { WinstonInterceptor } from './interceptors/winston.interceptor';
 import { AuthModule } from './modules/auth/auth.module';
@@ -26,6 +27,7 @@ import { UserModule } from './modules/user/user.module';
     JwtStrategy,
     JwtRefreshStrategy,
     { provide: APP_INTERCEPTOR, useClass: WinstonInterceptor },
+    CronService,
   ],
 })
 export class AppModule {}
