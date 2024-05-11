@@ -110,18 +110,20 @@ const forgotPassword = async (
     'email',
     'name',
   ]);
-  if (!user) throw new UnauthorizedException('Credenciais Inválidas');
+  if (user) {
+    const code = await codeService.createCode(user.id);
 
-  const code = await codeService.createCode(user.id);
+    const mail = forgotPasswordTemplate({
+      email: user.email,
+      code: code,
+      name: user.name.split(' ')[0],
+    });
+    await sendMail(mail);
+  }
 
-  const mail = forgotPasswordTemplate({
-    email: user.email,
-    code: code,
-    name: user.name.split(' ')[0],
-  });
-  await sendMail(mail);
   return {
-    message: 'Por favor, verifique seu e-mail para redefinir sua senha',
+    message:
+      'Verifique seu e-mail. Se encontrarmos seu cadastro na plataforma, você receberá instruções para redefinir sua senha.',
   };
 };
 

@@ -32,6 +32,7 @@ const getOneSchedule = async <Key extends keyof Schedule>(
     'intervalExit',
     'exit',
     'hourBalance',
+    'userId',
     'createdAt',
     'updatedAt',
   ] as Key[],

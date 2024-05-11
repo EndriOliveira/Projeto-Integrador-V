@@ -81,12 +81,12 @@ const createSchedule = async (
 
 const updateSchedule = async (
   id: string,
-  user: User,
+  hrUser: User,
   updateScheduleDto: UpdateScheduleDto,
 ): Promise<CreateScheduleResponseDto> => {
   validateUpdateSchedule(updateScheduleDto);
 
-  if (!user.isHumanResources)
+  if (!hrUser.isHumanResources)
     throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   let schedule = await scheduleRepository.getOneSchedule({ id });
@@ -98,6 +98,9 @@ const updateSchedule = async (
     !schedule.exit
   )
     throw new BadRequestException('Schedule Não está Completo');
+
+  const user = await userRepository.getOneUser({ id: schedule.userId });
+  if (!user) throw new NotFoundException('Usuário não encontrado');
 
   const {
     entryTime,
@@ -231,12 +234,16 @@ const updateSchedule = async (
   return updatedSchedule;
 };
 
-const deleteSchedule = async (user: User, id: string): Promise<void> => {
-  if (!user.isHumanResources)
+const deleteSchedule = async (hrUser: User, id: string): Promise<void> => {
+  if (!hrUser.isHumanResources)
     throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   const schedule = await scheduleRepository.getOneSchedule({ id });
   if (!schedule) throw new NotFoundException('Registro não encontrado');
+
+  const user = await userRepository.getOneUser({ id: schedule.userId });
+  if (!user) throw new NotFoundException('Usuário não encontrado');
+
   await scheduleRepository.deleteSchedule(id);
   await userRepository.updateUser(user.id, {
     hourBalance: user.hourBalance - schedule.hourBalance,

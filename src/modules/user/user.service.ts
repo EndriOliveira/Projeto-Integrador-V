@@ -34,11 +34,11 @@ const getUserById = async (id: string): Promise<FindUserResponseDto> => {
 
 const getUsers = async (
   query: FindUsersQueryDto,
-  user: User,
+  hrUser: User,
 ): Promise<FindUsersResponseDto> => {
   validateGetUsers(query);
 
-  if (!user.isHumanResources)
+  if (!hrUser.isHumanResources)
     throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   return await userRepository.getUsers(query);
@@ -98,12 +98,12 @@ const editUser = async (
 };
 
 const createUser = async (
-  user: User,
+  hrUser: User,
   createUserDto: CreateUserDto,
 ): Promise<CreateUserResponseDto> => {
   validateCreateUser(createUserDto);
 
-  if (!user.isHumanResources)
+  if (!hrUser.isHumanResources)
     throw new ForbiddenException('Usuário deve pertencer ao RH');
 
   validateCPF(removeNonNumbersCharacters(createUserDto.cpf));
@@ -141,10 +141,10 @@ const createUser = async (
   return newUser;
 };
 
-const deleteUser = async (id: string, user: User): Promise<void> => {
-  if (!user.isHumanResources)
+const deleteUser = async (id: string, hrUser: User): Promise<void> => {
+  if (!hrUser.isHumanResources)
     throw new ForbiddenException('Usuário deve pertencer ao RH');
-  if (user.id === id)
+  if (hrUser.id === id)
     throw new BadRequestException('Não é possível deletar a si mesmo');
 
   const userExists = await userRepository.getOneUser({ id });
