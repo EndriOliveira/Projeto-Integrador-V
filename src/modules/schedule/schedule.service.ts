@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
@@ -18,20 +19,25 @@ import { validateUpdateSchedule } from './schemas/updateSchedule.schema';
 const createSchedule = async (
   user: User,
 ): Promise<CreateScheduleResponseDto> => {
+  Logger.log(`Creating schedule for user ${user.email}`, 'createSchedule');
   const schedule = await scheduleRepository.getOneSchedule({
     userId: user.id,
     OR: [{ intervalEntry: null }, { intervalExit: null }, { exit: null }],
   });
 
   if (schedule) {
-    if (!schedule.intervalEntry)
+    if (!schedule.intervalEntry) {
+      Logger.log(`Schedule updated for user ${user.email}`, 'createSchedule');
       return await scheduleRepository.updateSchedule(schedule.id, {
         intervalEntry: dayjs(new Date()).subtract(3, 'hours').toDate(),
       });
-    if (!schedule.intervalExit)
+    }
+    if (!schedule.intervalExit) {
+      Logger.log(`Schedule updated for user ${user.email}`, 'createSchedule');
       return await scheduleRepository.updateSchedule(schedule.id, {
         intervalExit: dayjs(new Date()).subtract(3, 'hours').toDate(),
       });
+    }
     if (!schedule.exit) {
       const updatedSchedule = await scheduleRepository.updateSchedule(
         schedule.id,
@@ -67,12 +73,14 @@ const createSchedule = async (
           hourBalance: userHourBalance,
         });
       }
+      Logger.log(`Schedule updated for user ${user.email}`, 'createSchedule');
       return await scheduleRepository.updateSchedule(schedule.id, {
         hourBalance,
       });
     }
   }
 
+  Logger.log(`Schedule created for user ${user.email}`, 'createSchedule');
   return await scheduleRepository.createSchedule(
     user.id,
     dayjs(new Date()).subtract(3, 'hours').toDate(),
@@ -84,23 +92,34 @@ const updateSchedule = async (
   hrUser: User,
   updateScheduleDto: UpdateScheduleDto,
 ): Promise<CreateScheduleResponseDto> => {
+  Logger.log(`Updating schedule ${id}`, 'updateSchedule');
   validateUpdateSchedule(updateScheduleDto);
 
-  if (!hrUser.isHumanResources)
+  if (!hrUser.isHumanResources) {
+    Logger.error(`User is not HR`, 'updateSchedule');
     throw new ForbiddenException('Usuário deve pertencer ao RH');
+  }
 
   let schedule = await scheduleRepository.getOneSchedule({ id });
-  if (!schedule) throw new NotFoundException('Registro não encontrado');
+  if (!schedule) {
+    Logger.error(`Schedule not found`, 'updateSchedule');
+    throw new NotFoundException('Registro não encontrado');
+  }
   if (
     !schedule.entry ||
     !schedule.intervalEntry ||
     !schedule.intervalExit ||
     !schedule.exit
-  )
+  ) {
+    Logger.error(`Schedule is not complete`, 'updateSchedule');
     throw new BadRequestException('Schedule Não está Completo');
+  }
 
   const user = await userRepository.getOneUser({ id: schedule.userId });
-  if (!user) throw new NotFoundException('Usuário não encontrado');
+  if (!user) {
+    Logger.error(`User not found`, 'updateSchedule');
+    throw new NotFoundException('Usuário não encontrado');
+  }
 
   const {
     entryTime,
@@ -229,38 +248,56 @@ const updateSchedule = async (
 
     userHourBalance = user.hourBalance - schedule.hourBalance + hourBalance;
     await userRepository.updateUser(user.id, { hourBalance: userHourBalance });
+    Logger.log(`Schedule updated for user ${user.email}`, 'updateSchedule');
     return updatedSchedule;
   }
+  Logger.log(`Schedule updated for user ${user.email}`, 'updateSchedule');
   return updatedSchedule;
 };
 
 const deleteSchedule = async (hrUser: User, id: string): Promise<void> => {
-  if (!hrUser.isHumanResources)
+  Logger.log(`Deleting schedule ${id}`, 'deleteSchedule');
+  if (!hrUser.isHumanResources) {
+    Logger.error(`User is not HR`, 'deleteSchedule');
     throw new ForbiddenException('Usuário deve pertencer ao RH');
-
+  }
   const schedule = await scheduleRepository.getOneSchedule({ id });
-  if (!schedule) throw new NotFoundException('Registro não encontrado');
-
+  if (!schedule) {
+    Logger.error(`Schedule not found`, 'deleteSchedule');
+    throw new NotFoundException('Registro não encontrado');
+  }
   const user = await userRepository.getOneUser({ id: schedule.userId });
-  if (!user) throw new NotFoundException('Usuário não encontrado');
+  if (!user) {
+    Logger.error(`User not found`, 'deleteSchedule');
+    throw new NotFoundException('Usuário não encontrado');
+  }
 
   await scheduleRepository.deleteSchedule(id);
   await userRepository.updateUser(user.id, {
     hourBalance: user.hourBalance - schedule.hourBalance,
   });
+  Logger.log(`Schedule deleted`, 'deleteSchedule');
 };
 
 const listSchedulesByUser = async (
   userId: string,
   query: FindSchedulesQueryDto,
 ): Promise<GetSchedulesResponseDto> => {
+  Logger.log(`Listing schedules for user ${userId}`, 'listSchedulesByUser');
   validateGetSchedules(query);
-  return await scheduleRepository.getScheduleByUser(userId, query);
+  const schedules = await scheduleRepository.getScheduleByUser(userId, query);
+  Logger.log(`Schedules found`, 'listSchedulesByUser');
+  return schedules;
 };
 
 const getSchedule = async (id: string): Promise<GetScheduleResponseDto> => {
+  Logger.log(`Getting schedule ${id}`, 'getSchedule');
   const schedule = await scheduleRepository.getOneSchedule({ id });
-  if (!schedule) throw new NotFoundException('Registro não encontrado');
+  if (!schedule) {
+    Logger.error(`Schedule not found`, 'getSchedule');
+    throw new NotFoundException('Registro não encontrado');
+  }
+  Logger.log(`Schedule found`, 'getSchedule');
   return schedule;
 };
 

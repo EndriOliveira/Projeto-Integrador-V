@@ -1,4 +1,4 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 import { Code, Prisma } from '@prisma/client';
 import { v4 as uuidV4 } from 'uuid';
 import client from '../../database/client';
@@ -15,6 +15,7 @@ const createCode = async (createCodeDto: CreateCodeDto): Promise<Code> => {
       },
     });
   } catch (error) {
+    Logger.error(error.message, 'createCode');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -36,6 +37,7 @@ const getOneCode = async <Key extends keyof Code>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<Code, Key>;
   } catch (error) {
+    Logger.error(error.message, 'getOneCode');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -51,6 +53,7 @@ const updateManyCode = async (
     });
     return result.count;
   } catch (error) {
+    Logger.error(error.message, 'updateManyCode');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -64,6 +67,7 @@ const deleteManyCode = async (
     });
     return result.count;
   } catch (error) {
+    Logger.error(error.message, 'deleteManyCode');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };

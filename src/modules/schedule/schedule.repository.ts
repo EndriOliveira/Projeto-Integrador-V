@@ -1,4 +1,4 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 import { Prisma, Schedule } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { v4 as uuidV4 } from 'uuid';
@@ -19,6 +19,7 @@ const createSchedule = async (
       },
     });
   } catch (error) {
+    Logger.error(error.message, 'createSchedule');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -43,6 +44,7 @@ const getOneSchedule = async <Key extends keyof Schedule>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<Schedule, Key>;
   } catch (error) {
+    Logger.error(error.message, 'getOneSchedule');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -68,6 +70,7 @@ const updateSchedule = async (
       },
     })) as Schedule;
   } catch (error) {
+    Logger.error(error.message, 'updateSchedule');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -76,6 +79,7 @@ const deleteSchedule = async (id: string): Promise<Schedule> => {
   try {
     return await client.schedule.delete({ where: { id } });
   } catch (error) {
+    Logger.error(error.message, 'deleteSchedule');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -116,6 +120,7 @@ const getScheduleByUser = async (
       total: Number(count),
     };
   } catch (error) {
+    Logger.error(error.message, 'getScheduleByUser');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };

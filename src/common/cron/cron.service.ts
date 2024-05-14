@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as dayjs from 'dayjs';
 import * as cron from 'node-cron';
 import codeRepository from '../../modules/code/code.repository';
@@ -12,6 +12,7 @@ export class CronService {
 
   private initializeCronJobs() {
     cron.schedule('0 0 * * *', async () => {
+      Logger.log('Running cron job', 'initializeCronJobs');
       await refreshTokenRepository.deleteManyRefreshToken({
         createdAt: { lte: dayjs().subtract(8, 'hour').toDate() },
       });

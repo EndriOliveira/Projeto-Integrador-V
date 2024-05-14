@@ -1,11 +1,20 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 
 export const validateCPF = (cpf: string): boolean => {
+  Logger.log('Validating CPF', 'validateCPF');
   cpf = cpf.replace(/\.|-/g, '');
-  if (!/^(?!([0-9])\1{10}$)\d{11}$/.test(cpf))
+  if (!/^(?!([0-9])\1{10}$)\d{11}$/.test(cpf)) {
+    Logger.error('Invalid CPF', 'validateCPF');
     throw new BadRequestException('CPF Inválido');
-  if (!validateFirstDigit(cpf)) throw new BadRequestException('CPF Inválido');
-  if (!validateSecondDigit(cpf)) throw new BadRequestException('CPF Inválido');
+  }
+  if (!validateFirstDigit(cpf)) {
+    Logger.error('Invalid CPF', 'validateCPF');
+    throw new BadRequestException('CPF Inválido');
+  }
+  if (!validateSecondDigit(cpf)) {
+    Logger.error('Invalid CPF', 'validateCPF');
+    throw new BadRequestException('CPF Inválido');
+  }
   return true;
 };
 

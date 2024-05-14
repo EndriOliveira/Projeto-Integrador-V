@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -28,6 +29,7 @@ import { validateForgotPassword } from './schemas/forgotPassword.schema';
 import { validateResetPassword } from './schemas/resetPassword.schema';
 
 const me = async (user: User): Promise<MeResponseDto> => {
+  Logger.log(`User ${user.id} is getting its data`, 'me');
   const schedule = (await scheduleRepository.getOneSchedule(
     {
       AND: [{ userId: user.id }, { exit: null }],
@@ -43,6 +45,7 @@ const me = async (user: User): Promise<MeResponseDto> => {
     ],
   )) as Schedule;
 
+  Logger.log(`Data found for user ${user.id}`, 'me');
   return {
     ...user,
     schedule: schedule || null,
@@ -52,6 +55,7 @@ const me = async (user: User): Promise<MeResponseDto> => {
 const signIn = async (
   credentialsDto: CredentialsDto,
 ): Promise<SignInResponseDto> => {
+  Logger.log(`Authenticating email ${credentialsDto.email}`);
   validateSignIn(credentialsDto);
 
   const { email, password } = credentialsDto;
@@ -60,11 +64,18 @@ const signIn = async (
     'password',
     'updatedAt',
   ]);
-  if (!user) throw new UnauthorizedException('Credenciais Inválidas');
+  if (!user) {
+    Logger.error(`User ${email} not found`, 'signIn');
+    throw new UnauthorizedException('Credenciais Inválidas');
+  }
 
   const passwordMatch = await verifyPassword(password, user.password);
-  if (!passwordMatch) throw new UnauthorizedException('Credenciais Inválidas');
+  if (!passwordMatch) {
+    Logger.error(`User ${email} entered wrong password`, 'signIn');
+    throw new UnauthorizedException('Credenciais Inválidas');
+  }
 
+  Logger.log(`User ${email} authenticated successfully`, 'signIn');
   return {
     accessToken: generateJwt(
       envConfig.jwt.accessSecret,
@@ -78,22 +89,27 @@ const signIn = async (
 const logout = async (
   refreshToken: RefreshToken,
 ): Promise<MessageResponseDto> => {
+  Logger.log(`Logging out user ${refreshToken.userId}`, 'logout');
   const { id, userId } = refreshToken;
 
   const refreshTokenExists = await refreshTokenRepository.getOneRefreshToken({
     id,
   });
-  if (!refreshTokenExists)
+  if (!refreshTokenExists) {
+    Logger.error(`Refresh Token not found`, 'logout');
     throw new UnauthorizedException('Refresh Token Inválido');
+  }
 
   const user = await userService.getUserById(userId);
   if (!user) {
     await refreshTokenRepository.deleteOneRefreshToken({ id });
+    Logger.error(`User ${userId} not found`, 'logout');
     throw new NotFoundException('Usuário Não Encontrado');
   }
 
   await refreshTokenRepository.deleteOneRefreshToken({ id });
 
+  Logger.log(`${user.id} logged out successfully`, 'logout');
   return {
     message: 'Efetuou o logout com sucesso',
   };
@@ -102,6 +118,10 @@ const logout = async (
 const forgotPassword = async (
   forgotPasswordDto: ForgotPasswordDto,
 ): Promise<MessageResponseDto> => {
+  Logger.log(
+    `Requesting password reset for email ${forgotPasswordDto.email}`,
+    'forgotPassword',
+  );
   validateForgotPassword(forgotPasswordDto);
 
   const { email } = forgotPasswordDto;
@@ -119,6 +139,7 @@ const forgotPassword = async (
       name: user.name.split(' ')[0],
     });
     await sendMail(mail);
+    Logger.log(`Password reset email sent to ${email}`, 'forgotPassword');
   }
 
   return {
@@ -130,17 +151,24 @@ const forgotPassword = async (
 const resetPassword = async (
   resetPasswordDto: ResetPasswordDto,
 ): Promise<MessageResponseDto> => {
+  Logger.log(`Resetting password for code ${resetPasswordDto.code}`);
   validateResetPassword(resetPasswordDto);
 
   const { code, password, passwordConfirmation } = resetPasswordDto;
-  if (password !== passwordConfirmation)
+  if (password !== passwordConfirmation) {
+    Logger.error(`Passwords do not match`, 'resetPassword');
     throw new BadRequestException('Senhas não são iguais');
+  }
 
   const userCode = await codeService.validateCode(code);
   await userRepository.updateUser(userCode.userId, {
     password: await encryptPassword(password),
   });
 
+  Logger.log(
+    `Password successfully reset for ${userCode.userId}`,
+    'resetPassword',
+  );
   return {
     message: 'Senha alterada com sucesso',
   };
@@ -150,24 +178,37 @@ const changePassword = async (
   userId: string,
   changePasswordDto: ChangePasswordDto,
 ): Promise<User> => {
+  Logger.log(`Changing password for user ${userId}`, 'changePassword');
   validateChangePassword(changePasswordDto);
 
   const { password, newPassword, newPasswordConfirmation } = changePasswordDto;
 
-  if (newPassword !== newPasswordConfirmation)
+  if (newPassword !== newPasswordConfirmation) {
+    Logger.error(`Passwords do not match`, 'changePassword');
     throw new BadRequestException('Senhas não são iguais');
+  }
 
   const user = await userRepository.getOneUser({ id: userId });
-  if (!user) throw new UnauthorizedException('Credenciais Inválidas');
+  if (!user) {
+    Logger.error(`User ${userId} not found`, 'changePassword');
+    throw new UnauthorizedException('Credenciais Inválidas');
+  }
 
   const passwordMatch = await verifyPassword(password, user.password);
-  if (!passwordMatch) throw new UnauthorizedException('Credenciais Inválidas');
+  if (!passwordMatch) {
+    Logger.error(`User ${user.id} entered wrong password`, 'changePassword');
+    throw new UnauthorizedException('Credenciais Inválidas');
+  }
 
   await userRepository.updateUser(userId, {
     password: await encryptPassword(newPassword),
   });
 
   delete user.password;
+  Logger.log(
+    `Password changed successfully for user ${userId}`,
+    'changePassword',
+  );
   return user;
 };
 

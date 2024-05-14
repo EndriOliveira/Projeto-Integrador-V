@@ -1,4 +1,4 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 import { Prisma, RefreshToken } from '@prisma/client';
 import { v4 as uuidV4 } from 'uuid';
 import client from '../../database/client';
@@ -17,6 +17,7 @@ const createRefreshToken = async (
       },
     });
   } catch (error) {
+    Logger.error(error.message, 'createRefreshToken');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -31,6 +32,7 @@ const getOneRefreshToken = async <Key extends keyof RefreshToken>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<RefreshToken, Key>;
   } catch (error) {
+    Logger.error(error.message, 'getOneRefreshToken');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -46,6 +48,7 @@ const updateManyRefreshToken = async (
     });
     return result.count;
   } catch (error) {
+    Logger.error(error.message, 'updateManyRefreshToken');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -59,6 +62,7 @@ const deleteManyRefreshToken = async (
     });
     return result.count;
   } catch (error) {
+    Logger.error(error.message, 'deleteManyRefreshToken');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -69,6 +73,7 @@ const deleteOneRefreshToken = async (
   try {
     return await client.refreshToken.delete({ where });
   } catch (error) {
+    Logger.error(error.message, 'deleteOneRefreshToken');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };

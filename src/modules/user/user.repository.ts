@@ -1,4 +1,4 @@
-import { InternalServerErrorException } from '@nestjs/common';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 import { Prisma, User } from '@prisma/client';
 import { v4 as uuidV4 } from 'uuid';
 import client from '../../database/client';
@@ -30,6 +30,7 @@ const getOneUser = async <Key extends keyof User>(
       select: keys.reduce((obj, k) => ({ ...obj, [k]: true }), {}),
     })) as Pick<User, Key>;
   } catch (error) {
+    Logger.error(error.message, 'getOneUser');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -74,6 +75,7 @@ const createUser = async (createUserDto: CreateUserDto): Promise<User> => {
       },
     })) as User;
   } catch (error) {
+    Logger.error(error.message, 'createUser');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -145,6 +147,7 @@ const getUsers = async (
       pages: Number(totalPages(count, limit)),
     };
   } catch (error) {
+    Logger.error(error.message, 'getUsers');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -172,6 +175,7 @@ const updateUser = async (
       },
     })) as User;
   } catch (error) {
+    Logger.error(error.message, 'updateUser');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
@@ -182,6 +186,7 @@ const deleteUser = async (userId: string): Promise<void> => {
       where: { id: userId },
     });
   } catch (error) {
+    Logger.error(error.message, 'deleteUser');
     throw new InternalServerErrorException('Erro Interno de Servidor');
   }
 };
