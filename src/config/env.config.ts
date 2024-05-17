@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import { z } from 'zod';
 dotenv.config();
@@ -30,7 +31,10 @@ const envVarsSchema = z.object({
 });
 
 const result = envVarsSchema.safeParse(process.env);
-if (!result.success) throw new Error(result['error']);
+if (!result.success) {
+  Logger.error(result.error.errors);
+  throw new Error('Environment variables validation error');
+}
 
 export default {
   env: result.data.NODE_ENV,
