@@ -32,7 +32,7 @@ const envVarsSchema = z.object({
 
 const result = envVarsSchema.safeParse(process.env);
 if (!result.success) {
-  Logger.error(result.error.errors);
+  Logger.error(result);
   throw new Error('Environment variables validation error');
 }
 
