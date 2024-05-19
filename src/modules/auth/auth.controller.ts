@@ -46,6 +46,7 @@ export class AuthController {
   })
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
   async me(@GetUser() user: User): Promise<MeResponseDto> {
     return await authService.me(user);
