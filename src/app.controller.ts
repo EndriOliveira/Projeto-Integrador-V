@@ -8,12 +8,8 @@ export class AppController {
   @Get('/ok')
   @ApiResponse({
     status: 200,
-    description: 'Hello, world!',
-    schema: {
-      example: {
-        message: 'string',
-      },
-    },
+    description: 'Server is up and running!',
+    type: MessageResponseDto,
   })
   getHello(): MessageResponseDto {
     return {
