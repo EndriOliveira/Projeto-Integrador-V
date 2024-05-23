@@ -1,8 +1,26 @@
 {
-  "name": "Projeto-Integrador-V",
+  "name": "projeto-integrador-v",
   "version": "0.0.1",
   "description": "Projeto Integrador V - Grupo Homo Sapiens",
-  "author": "Endrio Oliveira",
+  "contributors": [
+    {
+      "name": "Endrio Oliveira",
+      "email": "endriojesus76@gmail.com"
+    },
+    {
+      "name": "Natalia Dinareli",
+      "email": "dinareli.lima@gmail.com"
+    },
+    {
+      "name": "Rael Souza",
+      "email": "rsouza2123@gmail.com"
+    },
+    {
+      "name": "Raquel Aparecida",
+      "email": "raquelteixeira517@gmail.com"
+    }
+  ],
+  "homepage": "https://github.com/EndriOliveira/Projeto-Integrador-V",
   "private": true,
   "license": "MIT",
   "scripts": {
