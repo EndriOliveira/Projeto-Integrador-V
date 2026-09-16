@@ -18,7 +18,7 @@ export const forgotPasswordTemplate = (
 ): ForgotPasswordResponse => {
   const mail = {
     to: forgotPasswordBody.email,
-    from: envConfig.sendGrid.email,
+    from: 'envConfig.sendGrid.email',
     subject: 'Recuperação de senha',
     html: `
       <!DOCTYPE html>

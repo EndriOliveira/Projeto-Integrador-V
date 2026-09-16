@@ -14,7 +14,7 @@ import codeService from '../code/code.service';
 import refreshTokenRepository from '../refreshToken/refreshToken.repository';
 import refreshTokenService from '../refreshToken/refreshToken.service';
 import scheduleRepository from '../schedule/schedule.repository';
-import { sendMail } from '../sendGrid/sendGrid.service';
+// import { sendMail } from '../sendGrid/sendGrid.service';
 import userRepository from '../user/user.repository';
 import userService from '../user/user.service';
 import { ChangePasswordDto } from './dto/request/changePassword.dto';
@@ -138,7 +138,7 @@ const forgotPassword = async (
       code: code,
       name: user.name.split(' ')[0],
     });
-    await sendMail(mail);
+    // await sendMail(mail);
     Logger.log(`Password reset email sent to ${email}`, 'forgotPassword');
   }
 

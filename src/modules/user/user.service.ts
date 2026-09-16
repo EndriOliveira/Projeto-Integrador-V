@@ -6,13 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { newUserTemplate } from 'src/templates/newUser.template';
 import { generateRandomCode } from 'src/utils/generateRandomCode';
 import { encryptPassword } from '../../utils/encryption';
 import { removeNonNumbersCharacters } from '../../utils/removeNonNumbersCharacters';
 import { validateCPF } from '../../utils/validateCpf';
-import { sendMail } from '../sendGrid/sendGrid.service';
+// import { sendMail } from '../sendGrid/sendGrid.service';
 import { CreateUserDto } from './dto/request/createUser.dto';
 import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto';
@@ -164,7 +164,7 @@ const createUser = async (
     name: newUser.name.split(' ')[0],
     password,
   });
-  await sendMail(mail);
+  // await sendMail(mail);
 
   Logger.log(`User created`, 'createUser');
   return newUser;

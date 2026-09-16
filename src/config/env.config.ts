@@ -13,8 +13,8 @@ const envVarsSchema = z.object({
   JWT_REFRESH_TOKEN_SECRET: z.string().default('secret'),
   JWT_REFRESH_TOKEN_EXPIRATION_TIME: z.string().default('1d'),
   DATABASE_URL: z.string(),
-  SENDGRID_API_KEY: z.string(),
-  SENDGRID_EMAIL: z.string().email(),
+  // SENDGRID_API_KEY: z.string(),
+  // SENDGRID_EMAIL: z.string().email(),
   FRONTEND_URL: z.string().url(),
   HUMAN_RESOURCES_NAME: z.string(),
   HUMAN_RESOURCES_EMAIL: z.string().email(),
@@ -46,10 +46,10 @@ export default {
     refreshExpirationTime: result.data.JWT_REFRESH_TOKEN_EXPIRATION_TIME,
   },
   databaseUrl: result.data.DATABASE_URL,
-  sendGrid: {
-    key: result.data.SENDGRID_API_KEY,
-    email: result.data.SENDGRID_EMAIL,
-  },
+  // sendGrid: {
+  //   key: result.data.SENDGRID_API_KEY,
+  //   email: result.data.SENDGRID_EMAIL,
+  // },
   frontendUrl: result.data.FRONTEND_URL,
   humanResources: {
     name: result.data.HUMAN_RESOURCES_NAME,

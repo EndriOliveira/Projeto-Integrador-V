@@ -16,7 +16,7 @@ type NewUserResponse = {
 export const newUserTemplate = (newUserBody: NewUserBody): NewUserResponse => {
   const mail = {
     to: newUserBody.email,
-    from: envConfig.sendGrid.email,
+    from: 'envConfig.sendGrid.email',
     subject: 'Boas Vindas',
     html: `
       <!DOCTYPE html>
