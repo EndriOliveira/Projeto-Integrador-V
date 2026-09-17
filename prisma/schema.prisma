@@ -8,23 +8,49 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+enum Role {
+  RH
+  GESTOR
+  FUNCIONARIO
+}
+
+enum PunchType {
+  ENTRADA
+  INTERVALO_ENTRADA
+  INTERVALO_SAIDA
+  SAIDA
+}
+
+enum DayType {
+  WEEKDAY
+  SATURDAY
+  SUNDAY_HOLIDAY
+}
+
 model User {
   id               String   @id @default(uuid()) @db.VarChar(255)
   name             String   @db.VarChar(255)
-  cpf              String   @db.VarChar(255)
+  cpf              String   @unique @db.VarChar(255)
   phone            String   @db.VarChar(255)
-  email            String   @db.VarChar(255)
+  email            String   @unique @db.VarChar(255)
   password         String   @db.VarChar(255)
   department       String   @db.VarChar(255)
   birthDate        DateTime @db.Timestamptz
-  isHumanResources Boolean  @default(false)
-  hourBalance      Float    @default(0)
+  role             Role     @default(FUNCIONARIO)
+  active           Boolean  @default(true)
+  dailyWorkMinutes Int      @default(480)
+  workWeekdays     Int[]    @default([1, 2, 3, 4, 5])
+  managerId        String?  @db.VarChar(255)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  schedule     Schedule[]     @relation("FK_Schedule_User_UserId")
-  code         Code[]         @relation("FK_Code_User_UserId")
-  refreshToken RefreshToken[] @relation("FK_RefreshToken_User_UserId")
+  manager      User?  @relation("FK_User_Manager_ManagerId", fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  managedUsers User[] @relation("FK_User_Manager_ManagerId")
+
+  timeEntries        TimeEntry[]         @relation("FK_TimeEntry_User_UserId")
+  code               Code[]              @relation("FK_Code_User_UserId")
+  refreshToken       RefreshToken[]      @relation("FK_RefreshToken_User_UserId")
+  timeEntryAuditLogs TimeEntryAuditLog[] @relation("FK_TimeEntryAuditLog_User_ChangedByUserId")
 }
 
 model RefreshToken {
@@ -36,20 +62,6 @@ model RefreshToken {
   user User @relation("FK_RefreshToken_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
-model Schedule {
-  id            String    @id @default(uuid()) @db.VarChar(255)
-  entry         DateTime  @db.Timestamptz
-  intervalEntry DateTime? @db.Timestamptz
-  intervalExit  DateTime? @db.Timestamptz
-  exit          DateTime? @db.Timestamptz
-  hourBalance   Float     @default(0)
-  userId        String    @db.VarChar(255)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  user User @relation("FK_Schedule_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-}
-
 model Code {
   id        String   @id @default(uuid()) @db.VarChar(255)
   userId    String   @db.VarChar(255)
@@ -59,4 +71,55 @@ model Code {
   active    Boolean  @default(true)
 
   user User @relation("FK_Code_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model TimeEntry {
+  id                 String    @id @default(uuid()) @db.VarChar(255)
+  userId             String    @db.VarChar(255)
+  type               PunchType
+  deviceTimestamp    DateTime  @db.Timestamptz
+  serverReceivedAt   DateTime  @default(now()) @db.Timestamptz
+  originatedOffline  Boolean   @default(false)
+  latitude           Float?
+  longitude          Float?
+  locationCapturedAt DateTime? @db.Timestamptz
+  clientGeneratedId  String    @unique @db.VarChar(255)
+  editedManually     Boolean   @default(false)
+  deletedAt          DateTime? @db.Timestamptz
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user      User                @relation("FK_TimeEntry_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  auditLogs TimeEntryAuditLog[] @relation("FK_TimeEntryAuditLog_TimeEntry_TimeEntryId")
+
+  @@index([userId, deviceTimestamp])
+}
+
+model TimeEntryAuditLog {
+  id              String   @id @default(uuid()) @db.VarChar(255)
+  timeEntryId     String   @db.VarChar(255)
+  changedByUserId String   @db.VarChar(255)
+  action          String   @db.VarChar(20)
+  previousData    Json?
+  newData         Json?
+  reason          String?  @db.VarChar(500)
+  createdAt       DateTime @default(now())
+
+  timeEntry     TimeEntry @relation("FK_TimeEntryAuditLog_TimeEntry_TimeEntryId", fields: [timeEntryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  changedByUser User      @relation("FK_TimeEntryAuditLog_User_ChangedByUserId", fields: [changedByUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model OvertimePolicy {
+  id         String   @id @default(uuid()) @db.VarChar(255)
+  dayType    DayType  @unique
+  percentage Float
+  active     Boolean  @default(true)
+  updatedAt  DateTime @updatedAt
+}
+
+model Holiday {
+  id        String   @id @default(uuid()) @db.VarChar(255)
+  date      DateTime @unique @db.Date
+  name      String   @db.VarChar(255)
+  createdAt DateTime @default(now())
 }

@@ -1,11 +1,11 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -24,11 +24,14 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { User } from '@prisma/client';
+import { Role, User } from '@prisma/client';
+import { Roles } from '../../shared/decorator/roles.decorator';
 import { httpErrors } from '../../shared/errors/http-errors';
+import { RolesGuard } from '../../shared/guards/roles.guard';
 import { GetUser } from '../auth/decorator/get-user.decorator';
 import { CreateUserDto } from './dto/request/createUser.dto';
 import { FindUsersQueryDto } from './dto/request/findUsersQuery.dto';
+import { UpdateManagerDto } from './dto/request/updateManager.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto';
 import { CreateUserResponseDto } from './dto/response/createUser.response.dto';
 import { FindUserResponseDto } from './dto/response/findUser.response.dto';
@@ -39,6 +42,26 @@ import userService from './user.service';
 @Controller('user')
 @ApiTags('User')
 export class UserController {
+  @Get('/managed')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.GESTOR)
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: 200,
+    description: 'Managed users found successfully',
+    type: FindUsersResponseDto,
+  })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.OK)
+  async getManagedUsers(
+    @GetUser() user: User,
+    @Query() query: FindUsersQueryDto,
+  ): Promise<FindUsersResponseDto> {
+    return await userService.getManagedUsers(user, query);
+  }
+
   @Get('/:id')
   @UseGuards(AuthGuard())
   @ApiSecurity('JWT-auth')
@@ -56,7 +79,8 @@ export class UserController {
   }
 
   @Post('/')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH)
   @ApiSecurity('JWT-auth')
   @ApiBody({ type: CreateUserDto })
   @ApiResponse({
@@ -70,14 +94,14 @@ export class UserController {
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.CREATED)
   async createUser(
-    @GetUser() user: User,
     @Body() createUserDto: CreateUserDto,
   ): Promise<CreateUserResponseDto> {
-    return await userService.createUser(user, createUserDto);
+    return await userService.createUser(createUserDto);
   }
 
   @Get('/')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH)
   @ApiSecurity('JWT-auth')
   @ApiResponse({
     status: 200,
@@ -89,14 +113,14 @@ export class UserController {
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.OK)
   async getUsers(
-    @GetUser() user: User,
     @Query() query: FindUsersQueryDto,
   ): Promise<FindUsersResponseDto> {
-    return await userService.getUsers(query, user);
+    return await userService.getUsers(query);
   }
 
   @Put('/:id')
-  @UseGuards(AuthGuard())
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH)
   @ApiSecurity('JWT-auth')
   @ApiBody({ type: UpdateUserDto })
   @ApiResponse({
@@ -113,28 +137,51 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   async editUser(
     @Param('id') id: string,
-    @GetUser() user: User,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UpdateUserResponseDto> {
-    return await userService.editUser(id, user, updateUserDto);
+    return await userService.editUser(id, updateUserDto);
   }
 
-  @Delete('/:id')
-  @UseGuards(AuthGuard())
+  @Patch('/:id/manager')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH)
+  @ApiSecurity('JWT-auth')
+  @ApiBody({ type: UpdateManagerDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Manager associated successfully',
+    type: UpdateUserResponseDto,
+  })
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiBadRequestResponse(httpErrors.badRequestError)
+  @ApiNotFoundResponse(httpErrors.notFoundError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.OK)
+  async updateManager(
+    @Param('id') id: string,
+    @Body() updateManagerDto: UpdateManagerDto,
+  ): Promise<UpdateUserResponseDto> {
+    return await userService.updateManager(id, updateManagerDto);
+  }
+
+  @Patch('/:id/inactivate')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH)
   @ApiSecurity('JWT-auth')
   @ApiResponse({
     status: 204,
-    description: 'User Deleted Successfully',
+    description: 'User Inactivated Successfully',
   })
   @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
   @ApiForbiddenResponse(httpErrors.forbiddenError)
   @ApiNotFoundResponse(httpErrors.notFoundError)
   @ApiInternalServerErrorResponse(httpErrors.internalServerError)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteUser(
+  async inactivateUser(
     @Param('id') id: string,
     @GetUser() user: User,
   ): Promise<void> {
-    await userService.deleteUser(id, user);
+    await userService.inactivateUser(id, user);
   }
 }

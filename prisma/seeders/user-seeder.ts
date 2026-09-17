@@ -1,4 +1,5 @@
 import * as dayjs from 'dayjs';
+import { Role } from '@prisma/client';
 import envConfig from '../../src/config/env.config';
 import userRepository from '../../src/modules/user/user.repository';
 import { encryptPassword } from '../../src/utils/encryption';
@@ -13,7 +14,7 @@ export const userSeeder = async () => {
     password: await encryptPassword(envConfig.humanResources.password),
     department: envConfig.humanResources.department,
     birthDate: dayjs(envConfig.humanResources.birthDate).format(),
-    isHumanResources: true,
+    role: Role.RH,
   };
 
   const userExists = await userRepository.getOneUser({

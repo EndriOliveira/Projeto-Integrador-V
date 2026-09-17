@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { z } from 'zod';
 import { UpdateUserDto } from '../dto/request/updateUserDto';
 
@@ -8,7 +9,8 @@ export const validateUpdateUser = (body: UpdateUserDto) => {
     cpf: z.string().trim().min(11).max(255).optional(),
     phone: z.string().trim().min(9).max(255).optional(),
     department: z.string().trim().max(255).optional(),
-    isHumanResources: z.boolean().optional(),
+    role: z.nativeEnum(Role).optional(),
+    active: z.boolean().optional(),
     birthDate: z
       .string()
       .trim()
@@ -17,7 +19,8 @@ export const validateUpdateUser = (body: UpdateUserDto) => {
         'Formato de Data Inválido. Use MM/DD/YYYY',
       )
       .optional(),
-    hourBalance: z.number().optional(),
+    dailyWorkMinutes: z.number().int().min(1).max(1440).optional(),
+    workWeekdays: z.array(z.number().int().min(1).max(7)).min(1).optional(),
   });
   const validate = schema.safeParse(body);
   if (!validate['success'])

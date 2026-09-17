@@ -51,6 +51,7 @@
     "bcryptjs": "^2.4.3",
     "dayjs": "^1.11.9",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "jsonwebtoken": "^9.0.1",
     "nest-winston": "^1.9.3",
     "node-cron": "^3.0.3",

@@ -10,18 +10,8 @@ async function bootstrap() {
   const logger = WinstonModule.createLogger(winstonConfig);
   const app = await NestFactory.create(AppModule, { logger, cors: true });
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Projeto Integrador 5')
-    .setDescription(
-      `
-        Documentação da API do Projeto Integrador 5 - SENAC/SP - 2024 - 5NC
-        
-        Autores:
-        - Endrio Oliveira
-        - Natalia Dinareli
-        - Rael Souza
-        - Raquel Aparecida
-      `,
-    )
+    .setTitle('Sistema de Controle de Ponto')
+    .setDescription('Documentação da API do sistema de controle de ponto')
     .setVersion('1.0')
     .addBearerAuth(
       {

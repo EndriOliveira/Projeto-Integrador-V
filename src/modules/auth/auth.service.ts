@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { RefreshToken, Schedule, User } from '@prisma/client';
+import { RefreshToken, User } from '@prisma/client';
 import envConfig from '../../config/env.config';
 import { MessageResponseDto } from '../../shared/dto/message.response.dto';
 import { forgotPasswordTemplate } from '../../templates/forgotPassword.template';
@@ -13,8 +13,9 @@ import { generateJwt } from '../../utils/jwt';
 import codeService from '../code/code.service';
 import refreshTokenRepository from '../refreshToken/refreshToken.repository';
 import refreshTokenService from '../refreshToken/refreshToken.service';
-import scheduleRepository from '../schedule/schedule.repository';
 // import { sendMail } from '../sendGrid/sendGrid.service';
+import timeEntryRepository from '../timeEntry/timeEntry.repository';
+import timeEntryService from '../timeEntry/timeEntry.service';
 import userRepository from '../user/user.repository';
 import userService from '../user/user.service';
 import { ChangePasswordDto } from './dto/request/changePassword.dto';
@@ -30,25 +31,23 @@ import { validateResetPassword } from './schemas/resetPassword.schema';
 
 const me = async (user: User): Promise<MeResponseDto> => {
   Logger.log(`User ${user.id} is getting its data`, 'me');
-  const schedule = (await scheduleRepository.getOneSchedule(
-    {
-      AND: [{ userId: user.id }, { exit: null }],
-    },
-    [
-      'id',
-      'entry',
-      'intervalEntry',
-      'intervalExit',
-      'exit',
-      'createdAt',
-      'updatedAt',
-    ],
-  )) as Schedule;
+  const now = new Date();
+  const { start, end } = timeEntryService.getDayBounds(now);
+  const todayEntries = await timeEntryRepository.getEntriesInRange(
+    user.id,
+    start,
+    end,
+  );
+  const nextExpectedType = await timeEntryService.getNextExpectedType(
+    user.id,
+    now,
+  );
 
   Logger.log(`Data found for user ${user.id}`, 'me');
   return {
     ...user,
-    schedule: schedule || null,
+    todayEntries,
+    nextExpectedType,
   };
 };
 
@@ -62,11 +61,17 @@ const signIn = async (
   const user = await userRepository.getOneUser({ email }, [
     'id',
     'password',
+    'active',
     'updatedAt',
   ]);
   if (!user) {
     Logger.error(`User ${email} not found`, 'signIn');
     throw new UnauthorizedException('Credenciais Inválidas');
+  }
+
+  if (!user.active) {
+    Logger.error(`User ${email} is inactive`, 'signIn');
+    throw new UnauthorizedException('Usuário Inativo');
   }
 
   const passwordMatch = await verifyPassword(password, user.password);

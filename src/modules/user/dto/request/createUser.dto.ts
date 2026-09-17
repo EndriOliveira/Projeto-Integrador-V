@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'John Doe' })
@@ -12,8 +13,26 @@ export class CreateUserDto {
   password?: string;
   @ApiProperty({ example: 'Developer' })
   department: string;
-  @ApiProperty({ example: false })
-  isHumanResources: boolean;
+  @ApiProperty({ example: Role.FUNCIONARIO, enum: Role })
+  role: Role;
   @ApiProperty({ example: '01/31/2001' })
   birthDate: string;
+  @ApiProperty({
+    required: false,
+    description: 'Id do gestor responsável pelo funcionário',
+    example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+  })
+  managerId?: string;
+  @ApiProperty({
+    required: false,
+    description: 'Jornada diária prevista, em minutos',
+    default: 480,
+  })
+  dailyWorkMinutes?: number;
+  @ApiProperty({
+    required: false,
+    description: 'Dias da semana trabalhados (1 = segunda ... 7 = domingo)',
+    example: [1, 2, 3, 4, 5],
+  })
+  workWeekdays?: number[];
 }
