@@ -30,7 +30,7 @@ relatórios em Excel.
 | Papel | Descrição |
 |---|---|
 | `RH` | Acesso total: cadastro/edição/inativação de usuários, associação gestor↔funcionário, regras de hora extra, feriados, relatórios de qualquer funcionário. |
-| `GESTOR` | Vê e consulta apenas os funcionários vinculados a ele (`managerId`). Pode gerar relatório da própria equipe. |
+| `GESTOR` | Vê e consulta apenas os funcionários vinculados a ele (`managerId`). |
 | `FUNCIONARIO` | Usa a própria conta: bate ponto, consulta suas marcações e seu saldo de banco de horas. |
 
 A checagem de papel é feita por um guard (`RolesGuard` + decorator `@Roles(...)`) nas
@@ -186,12 +186,21 @@ por e-mail) e `RefreshToken` para os tokens de renovação de sessão.
   `TimeEntryAuditLog` com o estado anterior e o novo.
 
 ### 6.8 Relatório
-- Único relatório do MVP: planilha `.xlsx` por período, com uma linha por dia por
-  funcionário — funcionário, data, tipo do dia, horas trabalhadas, jornada prevista,
-  saldo do dia, horas destinadas ao banco, horas destinadas a pagamento, percentual de
-  adicional aplicável e saldo acumulado do banco após aquele dia.
-- RH gera para todos os funcionários ou filtra por um único `userId`; Gestor gera só para
-  sua equipe (ou um funcionário específico dela).
+- Exclusivo do RH. Período = mês de ciclo da folha, do dia 21 do mês anterior ao dia 20
+  (`month = 2` é JAN/FEV). Um `.xlsx` por funcionário com três abas:
+  - **Ponto:** um dia por linha — marcações (até 4 pares entrada/saída + intervalo),
+    banco de horas, feriado, RDO pendente, campo, cliente, projeto, total, 20% (horas
+    entre 22h e 5h), 30% E / N.E. (total do dia com periculosidade) e horas extras nas
+    colunas dos percentuais cadastrados em Políticas (dia útil/sábado e domingo/feriado).
+  - **Banco de Horas:** totais por mês de ciclo do ano, 1º/2º semestre e ano; "calculada"
+    é a hora extra que excedeu o teto do banco e vai para pagamento.
+  - **Horas Pagas:** dados do funcionário (RG, CPF, admissão, nº de registro...), campo de
+    assinatura e horas pagas 60%/70%/100% com bloqueio por mês.
+- `/reports/timesheet/all` gera um `.zip` com uma pasta e um `.xlsx` por usuário ativo de
+  perfil Funcionário; `/reports/timesheet` gera o de um único `userId`.
+- Dados que o ponto não tem são mantidos pelo RH em `/timesheet`: apontamento do dia
+  (`WorkDay`: cliente, projeto, periculosidade, RDO) e horas pagas do mês (`PaidHours`).
+  Mês bloqueado não aceita edição de apontamentos nem de horas pagas até ser desbloqueado.
 - As colunas definitivas (formato exigido pelo cliente) ainda não foram validadas — o
   formato atual é o proposto pela análise da proposta técnica.
 
@@ -262,7 +271,17 @@ quando aplicável).
 
 | Método | Rota | Papel | Descrição |
 |---|---|---|---|
-| GET | `/reports/timesheet` | RH, GESTOR | Gera e baixa o relatório de ponto em `.xlsx` para o período/filtro informado |
+| GET | `/reports/timesheet` | RH | Relatório de ponto `.xlsx` de um funcionário (`userId`, `year`, `month` de ciclo) |
+| GET | `/reports/timesheet/all` | RH | `.zip` com uma pasta e um `.xlsx` por funcionário ativo (`year`, `month`) |
+
+### Dados do relatório (`/timesheet`)
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/timesheet/work-days` | RH | Apontamentos do mês de ciclo (`userId`, `year`, `month`) |
+| PUT | `/timesheet/work-days` | RH | Cria/atualiza o apontamento de um dia (cliente, projeto, periculosidade, RDO) |
+| GET | `/timesheet/paid-hours` | RH | Horas pagas do ano (`userId`, `year`) |
+| PUT | `/timesheet/paid-hours` | RH | Cria/atualiza horas pagas de um mês e o bloqueio |
 
 ## 8. O que ainda não foi feito
 

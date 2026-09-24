@@ -27,22 +27,31 @@ enum DayType {
   SUNDAY_HOLIDAY
 }
 
+// Adicional de periculosidade (30%) do dia: E = elétrico, N.E. = não elétrico.
+enum HazardType {
+  ELETRICO
+  NAO_ELETRICO
+}
+
 model User {
-  id               String   @id @default(uuid()) @db.VarChar(255)
-  name             String   @db.VarChar(255)
-  cpf              String   @unique @db.VarChar(255)
-  phone            String   @db.VarChar(255)
-  email            String   @unique @db.VarChar(255)
-  password         String   @db.VarChar(255)
-  department       String   @db.VarChar(255)
-  birthDate        DateTime @db.Timestamptz
-  role             Role     @default(FUNCIONARIO)
-  active           Boolean  @default(true)
-  dailyWorkMinutes Int      @default(480)
-  workWeekdays     Int[]    @default([1, 2, 3, 4, 5])
-  managerId        String?  @db.VarChar(255)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String    @id @default(uuid()) @db.VarChar(255)
+  name               String    @db.VarChar(255)
+  cpf                String    @unique @db.VarChar(255)
+  phone              String    @db.VarChar(255)
+  email              String    @unique @db.VarChar(255)
+  password           String    @db.VarChar(255)
+  department         String    @db.VarChar(255)
+  birthDate          DateTime  @db.Timestamptz
+  role               Role      @default(FUNCIONARIO)
+  active             Boolean   @default(true)
+  dailyWorkMinutes   Int       @default(480)
+  workWeekdays       Int[]     @default([1, 2, 3, 4, 5])
+  managerId          String?   @db.VarChar(255)
+  rg                 String?   @db.VarChar(255)
+  registrationNumber String?   @db.VarChar(255)
+  admissionDate      DateTime? @db.Date
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   manager      User?  @relation("FK_User_Manager_ManagerId", fields: [managerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   managedUsers User[] @relation("FK_User_Manager_ManagerId")
@@ -51,6 +60,8 @@ model User {
   code               Code[]              @relation("FK_Code_User_UserId")
   refreshToken       RefreshToken[]      @relation("FK_RefreshToken_User_UserId")
   timeEntryAuditLogs TimeEntryAuditLog[] @relation("FK_TimeEntryAuditLog_User_ChangedByUserId")
+  workDays           WorkDay[]           @relation("FK_WorkDay_User_UserId")
+  paidHours          PaidHours[]         @relation("FK_PaidHours_User_UserId")
 }
 
 model RefreshToken {
@@ -122,4 +133,39 @@ model Holiday {
   date      DateTime @unique @db.Date
   name      String   @db.VarChar(255)
   createdAt DateTime @default(now())
+}
+
+// Apontamento do dia preenchido pelo RH (cliente, projeto, campo, RDO).
+model WorkDay {
+  id         String      @id @default(uuid()) @db.VarChar(255)
+  userId     String      @db.VarChar(255)
+  date       DateTime    @db.Date
+  client     String?     @db.VarChar(255)
+  project    String?     @db.VarChar(255)
+  hazardType HazardType?
+  rdoPending Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user User @relation("FK_WorkDay_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, date])
+}
+
+// Horas efetivamente pagas no mês de ciclo (dia 21 do mês anterior ao dia 20 de `month`).
+model PaidHours {
+  id             String   @id @default(uuid()) @db.VarChar(255)
+  userId         String   @db.VarChar(255)
+  year           Int
+  month          Int
+  paid60Minutes  Int      @default(0)
+  paid70Minutes  Int      @default(0)
+  paid100Minutes Int      @default(0)
+  locked         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation("FK_PaidHours_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([userId, year, month])
 }

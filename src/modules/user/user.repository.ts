@@ -24,6 +24,9 @@ const defaultSelect = {
   dailyWorkMinutes: true,
   workWeekdays: true,
   managerId: true,
+  rg: true,
+  registrationNumber: true,
+  admissionDate: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -41,6 +44,9 @@ const safeSelect = {
   dailyWorkMinutes: true,
   workWeekdays: true,
   managerId: true,
+  rg: true,
+  registrationNumber: true,
+  admissionDate: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -73,6 +79,9 @@ const createUser = async (createUserDto: CreateUserDto): Promise<User> => {
     managerId,
     dailyWorkMinutes,
     workWeekdays,
+    rg,
+    registrationNumber,
+    admissionDate,
   } = createUserDto;
 
   try {
@@ -90,6 +99,9 @@ const createUser = async (createUserDto: CreateUserDto): Promise<User> => {
         managerId: managerId || null,
         dailyWorkMinutes,
         workWeekdays,
+        rg: rg || null,
+        registrationNumber: registrationNumber || null,
+        admissionDate: (admissionDate as any) || null,
       },
       select: safeSelect,
     })) as User;

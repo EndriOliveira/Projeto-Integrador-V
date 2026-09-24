@@ -35,4 +35,18 @@ export class CreateUserDto {
     example: [1, 2, 3, 4, 5],
   })
   workWeekdays?: number[];
+  @ApiProperty({ required: false, example: '12.345.678-9' })
+  rg?: string;
+  @ApiProperty({
+    required: false,
+    description: 'Nº de registro',
+    example: '1234',
+  })
+  registrationNumber?: string;
+  @ApiProperty({
+    required: false,
+    description: 'Data de admissão',
+    example: '09/22/2023',
+  })
+  admissionDate?: string;
 }

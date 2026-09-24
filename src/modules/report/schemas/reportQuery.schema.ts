@@ -1,23 +1,28 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
+import { AllReportsQueryDto } from '../dto/request/allReportsQuery.dto';
 import { ReportQueryDto } from '../dto/request/reportQuery.dto';
 
-const dateRegex =
-  /^(?:(?:(?:0[1-9]|1[0-2])\/(?:0[1-9]|1\d|2[0-8])|(?:0[13-9]|1[0-2])\/(?:29|30)|(?:0[13578]|1[02])\/31)\/[1-9]\d{3}|02\/29(?:\/[1-9]\d(?:0[48]|[2468][048]|[13579][26])|(?:[2468][048]|[13579][26])00))$/m;
-
-export const validateReportQuery = (body: ReportQueryDto) => {
+// Query strings chegam como texto: devolve year/month já convertidos.
+export const validateReportQuery = (query: ReportQueryDto) => {
   const schema = z.object({
-    rangeStart: z
-      .string()
-      .trim()
-      .regex(dateRegex, 'Formato de Data Inválido. Use MM/DD/YYYY'),
-    rangeEnd: z
-      .string()
-      .trim()
-      .regex(dateRegex, 'Formato de Data Inválido. Use MM/DD/YYYY'),
-    userId: z.string().trim().max(255).optional(),
+    userId: z.string().trim().min(1).max(255),
+    year: z.coerce.number().int().min(2000).max(2100),
+    month: z.coerce.number().int().min(1).max(12),
   });
-  const validate = schema.safeParse(body);
+  const validate = schema.safeParse(query);
   if (!validate['success'])
     throw new BadRequestException(validate['error'].issues);
+  return validate['data'];
+};
+
+export const validateAllReportsQuery = (query: AllReportsQueryDto) => {
+  const schema = z.object({
+    year: z.coerce.number().int().min(2000).max(2100),
+    month: z.coerce.number().int().min(1).max(12),
+  });
+  const validate = schema.safeParse(query);
+  if (!validate['success'])
+    throw new BadRequestException(validate['error'].issues);
+  return validate['data'];
 };

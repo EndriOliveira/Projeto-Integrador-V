@@ -14,6 +14,7 @@ import { OvertimePolicyModule } from './modules/overtimePolicy/overtimePolicy.mo
 import { RefreshTokenModule } from './modules/refreshToken/refreshToken.module';
 import { ReportModule } from './modules/report/report.module';
 import { TimeEntryModule } from './modules/timeEntry/timeEntry.module';
+import { TimesheetModule } from './modules/timesheet/timesheet.module';
 import { UserModule } from './modules/user/user.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { UserModule } from './modules/user/user.module';
     HourBalanceModule,
     OvertimePolicyModule,
     ReportModule,
+    TimesheetModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     WinstonModule.forRoot(winstonConfig),
   ],

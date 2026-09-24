@@ -9,6 +9,7 @@ import * as dayjs from 'dayjs';
 import { newUserTemplate } from 'src/templates/newUser.template';
 import { generateRandomCode } from 'src/utils/generateRandomCode';
 import { encryptPassword } from '../../utils/encryption';
+import { parseDateOnly } from '../../utils/parseDateOnly';
 import { removeNonNumbersCharacters } from '../../utils/removeNonNumbersCharacters';
 import { validateCPF } from '../../utils/validateCpf';
 // import { sendMail } from '../sendGrid/sendGrid.service';
@@ -130,6 +131,17 @@ const editUser = async (
     workWeekdays: updateUserDto.workWeekdays
       ? updateUserDto.workWeekdays
       : user.workWeekdays,
+    rg: updateUserDto.rg !== undefined ? updateUserDto.rg || null : user.rg,
+    registrationNumber:
+      updateUserDto.registrationNumber !== undefined
+        ? updateUserDto.registrationNumber || null
+        : user.registrationNumber,
+    admissionDate:
+      updateUserDto.admissionDate !== undefined
+        ? updateUserDto.admissionDate
+          ? parseDateOnly(updateUserDto.admissionDate)
+          : null
+        : user.admissionDate,
   });
   delete updatedUser.password;
   Logger.log(`User updated`, 'editUser');
@@ -204,6 +216,9 @@ const createUser = async (
     cpf: removeNonNumbersCharacters(createUserDto.cpf),
     password: await encryptPassword(password),
     birthDate: dayjs(createUserDto.birthDate) as any,
+    admissionDate: createUserDto.admissionDate
+      ? (parseDateOnly(createUserDto.admissionDate) as any)
+      : undefined,
   });
 
   const mail = newUserTemplate({

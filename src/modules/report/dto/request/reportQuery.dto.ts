@@ -1,14 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ReportQueryDto {
-  @ApiProperty({ example: '01/01/2001', description: 'Início do período' })
-  rangeStart: string;
-  @ApiProperty({ example: '01/31/2001', description: 'Fim do período' })
-  rangeEnd: string;
   @ApiProperty({
-    required: false,
-    description:
-      'Restringe o relatório a um único funcionário. Se omitido, RH gera para todos e Gestor para sua equipe.',
+    example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    description: 'Funcionário do relatório',
   })
-  userId?: string;
+  userId: string;
+  @ApiProperty({ example: 2026 })
+  year: number;
+  @ApiProperty({
+    example: 2,
+    description:
+      'Mês de ciclo da aba de ponto (2 = JAN/FEV, de 21/01 a 20/02). As abas de banco de horas e horas pagas cobrem o ano inteiro.',
+  })
+  month: number;
 }

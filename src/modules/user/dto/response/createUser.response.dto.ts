@@ -26,6 +26,12 @@ export class CreateUserResponseDto {
   workWeekdays: number[];
   @ApiProperty({ example: null, nullable: true })
   managerId: string | null;
+  @ApiProperty({ example: '12.345.678-9', nullable: true })
+  rg: string | null;
+  @ApiProperty({ example: '1234', nullable: true })
+  registrationNumber: string | null;
+  @ApiProperty({ example: '2023-09-22T00:00:00.000Z', nullable: true })
+  admissionDate: Date | null;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
