@@ -14,6 +14,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
+  ApiBody,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
   ApiNotFoundResponse,
@@ -22,11 +23,10 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Role, User } from '@prisma/client';
-import { Roles } from '../../shared/decorator/roles.decorator';
+import { User } from '@prisma/client';
 import { httpErrors } from '../../shared/errors/http-errors';
-import { RolesGuard } from '../../shared/guards/roles.guard';
 import { GetUser } from '../auth/decorator/get-user.decorator';
+import { CreateManualTimeEntryDto } from './dto/request/createManualTimeEntry.dto';
 import { CreateTimeEntryDto } from './dto/request/createTimeEntry.dto';
 import { DeleteTimeEntryDto } from './dto/request/deleteTimeEntry.dto';
 import { FindTimeEntriesQueryDto } from './dto/request/findTimeEntriesQuery.dto';
@@ -57,6 +57,29 @@ export class TimeEntryController {
     @Body() createTimeEntryDto: CreateTimeEntryDto,
   ): Promise<TimeEntryResponseDto> {
     return await timeEntryService.createTimeEntry(user, createTimeEntryDto);
+  }
+
+  @Post('/manual')
+  @UseGuards(AuthGuard())
+  @ApiSecurity('JWT-auth')
+  @ApiBody({ type: CreateManualTimeEntryDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Manual time entry created successfully',
+    type: TimeEntryResponseDto,
+  })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.CREATED)
+  async createManualTimeEntry(
+    @GetUser() user: User,
+    @Body() createManualTimeEntryDto: CreateManualTimeEntryDto,
+  ): Promise<TimeEntryResponseDto> {
+    return await timeEntryService.createManualTimeEntry(
+      user,
+      createManualTimeEntryDto,
+    );
   }
 
   @Post('/sync')
@@ -98,9 +121,9 @@ export class TimeEntryController {
     return await timeEntryService.listTimeEntries(user, query);
   }
 
+  // RH altera qualquer marcação; os demais perfis só as próprias (ver service).
   @Patch('/:id')
-  @UseGuards(AuthGuard(), RolesGuard)
-  @Roles(Role.RH)
+  @UseGuards(AuthGuard())
   @ApiSecurity('JWT-auth')
   @ApiResponse({
     status: 200,
@@ -122,8 +145,7 @@ export class TimeEntryController {
   }
 
   @Delete('/:id')
-  @UseGuards(AuthGuard(), RolesGuard)
-  @Roles(Role.RH)
+  @UseGuards(AuthGuard())
   @ApiSecurity('JWT-auth')
   @ApiResponse({
     status: 204,

@@ -21,6 +21,7 @@ type CreateTimeEntryData = {
   latitude?: number;
   longitude?: number;
   locationCapturedAt?: Date;
+  editedManually?: boolean;
 };
 
 type CreateAuditLogData = {

@@ -152,6 +152,15 @@ por e-mail) e `RefreshToken` para os tokens de renovação de sessão.
   uma estratégia propositalmente simples — a proposta deixa em aberto a definição de uma
   estratégia definitiva de conciliação, a ser validada com o cliente.
 
+### 6.4.1 Marcação manual e correção pelo próprio funcionário
+- `POST /time-entries/manual`: o usuário registra um ponto esquecido informando tipo,
+  data/hora e motivo. A marcação fica com `editedManually: true` e gera auditoria `CREATE`.
+- `PATCH`/`DELETE /time-entries/:id`: RH altera qualquer marcação; os demais perfis só
+  as próprias e dos últimos 30 dias. Sempre exigem motivo e geram auditoria.
+- Mesmos limites de horário da seção 6.4 (até 5 min no futuro, até 30 dias no passado).
+- Mês de ciclo bloqueado pelo RH (Horas Pagas > Bloq. Mês) não aceita criar, alterar nem
+  excluir marcações daquele período, nem pelo RH, até ser desbloqueado.
+
 ### 6.5 Geolocalização
 - Cada marcação pode registrar `latitude`, `longitude` e `locationCapturedAt`. Todos
   opcionais (o app envia quando conseguir obter o GPS).
@@ -246,9 +255,10 @@ quando aplicável).
 |---|---|---|---|
 | POST | `/time-entries` | — | Registra uma marcação em tempo real (tipo pode ser inferido) |
 | POST | `/time-entries/sync` | — | Envia um lote de marcações feitas offline (idempotente) |
+| POST | `/time-entries/manual` | — | Registra uma marcação esquecida com tipo, horário e motivo (gera auditoria) |
 | GET | `/time-entries` | — | Lista marcações (filtros: funcionário, período, tipo); escopo por papel |
-| PATCH | `/time-entries/:id` | RH | Edita uma marcação manualmente (exige motivo, gera auditoria) |
-| DELETE | `/time-entries/:id` | RH | Exclui (soft) uma marcação (exige motivo, gera auditoria) |
+| PATCH | `/time-entries/:id` | — | Edita uma marcação (RH: qualquer; demais: só as próprias, até 30 dias). Exige motivo, gera auditoria |
+| DELETE | `/time-entries/:id` | — | Exclui (soft) uma marcação (mesmas regras do PATCH). Exige motivo, gera auditoria |
 
 ### Banco de horas (`/hour-balance`)
 

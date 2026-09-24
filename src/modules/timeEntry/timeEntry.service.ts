@@ -1,8 +1,17 @@
-import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, PunchType, Role, User } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, PunchType, Role, TimeEntry, User } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { v4 as uuidV4 } from 'uuid';
 import { assertCanAccessEmployee } from '../../shared/access-control';
+import { getCycleOf } from '../../shared/payrollCycle';
+import timesheetRepository from '../timesheet/timesheet.repository';
+import { CreateManualTimeEntryDto } from './dto/request/createManualTimeEntry.dto';
+import { validateCreateManualTimeEntry } from './schemas/createManualTimeEntry.schema';
 import userRepository from '../user/user.repository';
 import { CreateTimeEntryDto } from './dto/request/createTimeEntry.dto';
 import { DeleteTimeEntryDto } from './dto/request/deleteTimeEntry.dto';
@@ -70,6 +79,88 @@ const validateDeviceTimestamp = (deviceTimestamp: Date): void => {
       'Horário do dispositivo está muito atrasado em relação ao horário do servidor',
     );
   }
+};
+
+// Dia BRT (UTC-3) da marcação, independente do fuso do servidor.
+const brtDayKey = (date: Date): string =>
+  new Date(date.getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+// Mês fechado pelo RH (Horas Pagas > Bloq. Mês) não aceita alterações de ponto.
+const assertMonthNotLocked = async (
+  userId: string,
+  date: Date,
+): Promise<void> => {
+  const cycle = getCycleOf(brtDayKey(date));
+  const paidHours = await timesheetRepository.getOnePaidHours(
+    userId,
+    cycle.year,
+    cycle.month,
+  );
+  if (paidHours?.locked) {
+    Logger.error(`Cycle ${cycle.month}/${cycle.year} locked`, 'timeEntry');
+    throw new BadRequestException(
+      'Mês bloqueado pelo RH: peça ao RH para ajustar esta marcação',
+    );
+  }
+};
+
+// RH altera qualquer marcação; os demais só as próprias e dentro da janela
+// de PAST_TOLERANCE_DAYS (a mesma aceita para marcações retroativas).
+const assertCanChangeEntry = (actingUser: User, entry: TimeEntry): void => {
+  if (actingUser.role === Role.RH) return;
+  if (entry.userId !== actingUser.id) {
+    Logger.error(
+      `User ${actingUser.id} cannot change entry ${entry.id}`,
+      'assertCanChangeEntry',
+    );
+    throw new ForbiddenException('Você só pode alterar as próprias marcações');
+  }
+  if (dayjs().diff(dayjs(entry.deviceTimestamp), 'day') > PAST_TOLERANCE_DAYS) {
+    throw new BadRequestException(
+      `Só é possível alterar marcações dos últimos ${PAST_TOLERANCE_DAYS} dias. Procure o RH.`,
+    );
+  }
+};
+
+// Marcação manual: o próprio usuário registra um ponto esquecido informando
+// tipo, horário e motivo. Fica marcada como editedManually e vai para a auditoria.
+const createManualTimeEntry = async (
+  user: User,
+  createManualTimeEntryDto: CreateManualTimeEntryDto,
+): Promise<TimeEntryResponseDto> => {
+  Logger.log(
+    `Creating manual time entry for user ${user.id}`,
+    'createManualTimeEntry',
+  );
+  validateCreateManualTimeEntry(createManualTimeEntryDto);
+
+  const deviceTimestamp = dayjs(
+    createManualTimeEntryDto.deviceTimestamp,
+  ).toDate();
+  validateDeviceTimestamp(deviceTimestamp);
+  await assertMonthNotLocked(user.id, deviceTimestamp);
+
+  const created = await timeEntryRepository.createTimeEntry({
+    userId: user.id,
+    type: createManualTimeEntryDto.type,
+    deviceTimestamp,
+    clientGeneratedId: uuidV4(),
+    originatedOffline: false,
+    editedManually: true,
+  });
+
+  await timeEntryRepository.createAuditLog({
+    timeEntryId: created.id,
+    changedByUserId: user.id,
+    action: 'CREATE',
+    newData: created as unknown as Prisma.InputJsonValue,
+    reason: createManualTimeEntryDto.reason,
+  });
+  Logger.log(
+    `Manual time entry created for user ${user.id}`,
+    'createManualTimeEntry',
+  );
+  return created;
 };
 
 const createTimeEntry = async (
@@ -209,7 +300,7 @@ const listTimeEntries = async (
 
 const updateTimeEntry = async (
   id: string,
-  hrUser: User,
+  actingUser: User,
   updateTimeEntryDto: UpdateTimeEntryDto,
 ): Promise<TimeEntryResponseDto> => {
   Logger.log(`Updating time entry ${id}`, 'updateTimeEntry');
@@ -223,8 +314,15 @@ const updateTimeEntry = async (
     Logger.error(`Time entry not found`, 'updateTimeEntry');
     throw new NotFoundException('Marcação Não Encontrada');
   }
+  assertCanChangeEntry(actingUser, entry);
+  await assertMonthNotLocked(entry.userId, entry.deviceTimestamp);
 
   const { reason, deviceTimestamp, ...rest } = updateTimeEntryDto;
+  if (deviceTimestamp) {
+    const newTimestamp = dayjs(deviceTimestamp).toDate();
+    if (actingUser.role !== Role.RH) validateDeviceTimestamp(newTimestamp);
+    await assertMonthNotLocked(entry.userId, newTimestamp);
+  }
   const updated = await timeEntryRepository.updateTimeEntry(id, {
     ...rest,
     deviceTimestamp: deviceTimestamp
@@ -235,7 +333,7 @@ const updateTimeEntry = async (
 
   await timeEntryRepository.createAuditLog({
     timeEntryId: id,
-    changedByUserId: hrUser.id,
+    changedByUserId: actingUser.id,
     action: 'UPDATE',
     previousData: entry as unknown as Prisma.InputJsonValue,
     newData: updated as unknown as Prisma.InputJsonValue,
@@ -248,7 +346,7 @@ const updateTimeEntry = async (
 
 const deleteTimeEntry = async (
   id: string,
-  hrUser: User,
+  actingUser: User,
   deleteTimeEntryDto: DeleteTimeEntryDto,
 ): Promise<void> => {
   Logger.log(`Deleting time entry ${id}`, 'deleteTimeEntry');
@@ -262,6 +360,8 @@ const deleteTimeEntry = async (
     Logger.error(`Time entry not found`, 'deleteTimeEntry');
     throw new NotFoundException('Marcação Não Encontrada');
   }
+  assertCanChangeEntry(actingUser, entry);
+  await assertMonthNotLocked(entry.userId, entry.deviceTimestamp);
 
   await timeEntryRepository.updateTimeEntry(id, {
     deletedAt: new Date(),
@@ -270,7 +370,7 @@ const deleteTimeEntry = async (
 
   await timeEntryRepository.createAuditLog({
     timeEntryId: id,
-    changedByUserId: hrUser.id,
+    changedByUserId: actingUser.id,
     action: 'DELETE',
     previousData: entry as unknown as Prisma.InputJsonValue,
     reason: deleteTimeEntryDto.reason,
@@ -280,6 +380,7 @@ const deleteTimeEntry = async (
 
 const timeEntryService = {
   createTimeEntry,
+  createManualTimeEntry,
   syncTimeEntries,
   listTimeEntries,
   updateTimeEntry,
