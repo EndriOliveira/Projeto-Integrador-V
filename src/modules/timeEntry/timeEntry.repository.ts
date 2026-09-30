@@ -1,5 +1,7 @@
 import { InternalServerErrorException, Logger } from '@nestjs/common';
 import {
+  ApprovalAction,
+  ApprovalStatus,
   Prisma,
   PunchType,
   TimeEntry,
@@ -22,15 +24,47 @@ type CreateTimeEntryData = {
   longitude?: number;
   locationCapturedAt?: Date;
   editedManually?: boolean;
+  approvalStatus?: ApprovalStatus;
+  pendingAction?: ApprovalAction;
+  requestReason?: string;
 };
 
 type CreateAuditLogData = {
   timeEntryId: string;
   changedByUserId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  action:
+    | 'CREATE'
+    | 'UPDATE'
+    | 'DELETE'
+    | 'CREATE_REQUEST'
+    | 'UPDATE_REQUEST'
+    | 'DELETE_REQUEST'
+    | 'APPROVE'
+    | 'REJECT';
   previousData?: Prisma.InputJsonValue;
   newData?: Prisma.InputJsonValue;
   reason?: string;
+};
+
+// Marcações que valem para horas/relatório: some a rejeitada e a manual que
+// ainda aguarda aprovação. Pedido de alteração/exclusão pendente continua
+// valendo com o dado atual até ser aprovado.
+const COUNTED_ENTRY_FILTER: Prisma.TimeEntryWhereInput = {
+  deletedAt: null,
+  NOT: [
+    { approvalStatus: ApprovalStatus.REJECTED },
+    {
+      approvalStatus: ApprovalStatus.PENDING,
+      pendingAction: ApprovalAction.CREATE,
+    },
+  ],
+};
+
+// Marcações do dia mostradas ao funcionário e usadas no ciclo do botão de ponto:
+// inclui a manual pendente (ele já registrou), mas não a rejeitada.
+const VISIBLE_TODAY_FILTER: Prisma.TimeEntryWhereInput = {
+  deletedAt: null,
+  approvalStatus: { not: ApprovalStatus.REJECTED },
 };
 
 const createTimeEntry = async (
@@ -78,8 +112,8 @@ const countTodayEntries = async (
   try {
     return await client.timeEntry.count({
       where: {
+        ...VISIBLE_TODAY_FILTER,
         userId,
-        deletedAt: null,
         deviceTimestamp: { gte: dayStart, lte: dayEnd },
       },
     });
@@ -97,8 +131,8 @@ const getEntriesInRange = async (
   try {
     return await client.timeEntry.findMany({
       where: {
+        ...VISIBLE_TODAY_FILTER,
         userId,
-        deletedAt: null,
         deviceTimestamp: { gte: start, lte: end },
       },
       orderBy: { deviceTimestamp: 'asc' },
@@ -119,8 +153,8 @@ const getEntriesForUser = async (
   try {
     return await client.timeEntry.findMany({
       where: {
+        ...COUNTED_ENTRY_FILTER,
         userId,
-        deletedAt: null,
         deviceTimestamp: upToDate ? { lte: upToDate } : undefined,
       },
       orderBy: { deviceTimestamp: 'asc' },
@@ -194,6 +228,64 @@ const listTimeEntries = async (
   }
 };
 
+// Só aplica se a marcação ainda estiver pendente: se dois aprovadores
+// decidirem ao mesmo tempo, o segundo recebe null em vez de sobrescrever.
+const resolvePendingTimeEntry = async (
+  id: string,
+  data: Prisma.TimeEntryUncheckedUpdateManyInput,
+): Promise<TimeEntry | null> => {
+  try {
+    const { count } = await client.timeEntry.updateMany({
+      where: { id, approvalStatus: ApprovalStatus.PENDING, deletedAt: null },
+      data,
+    });
+    if (count === 0) return null;
+    return await client.timeEntry.findUnique({ where: { id } });
+  } catch (error) {
+    Logger.error(error.message, 'resolvePendingTimeEntry');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
+  }
+};
+
+// Fila de aprovação: undefined = todos (RH); lista = equipe do gestor.
+const listPendingTimeEntries = async (userIdFilter: string[] | undefined) => {
+  try {
+    return await client.timeEntry.findMany({
+      where: {
+        deletedAt: null,
+        approvalStatus: ApprovalStatus.PENDING,
+        userId: userIdFilter ? { in: userIdFilter } : undefined,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, department: true },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+  } catch (error) {
+    Logger.error(error.message, 'listPendingTimeEntries');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
+  }
+};
+
+const countPendingTimeEntries = async (
+  userIdFilter: string[] | undefined,
+): Promise<number> => {
+  try {
+    return await client.timeEntry.count({
+      where: {
+        deletedAt: null,
+        approvalStatus: ApprovalStatus.PENDING,
+        userId: userIdFilter ? { in: userIdFilter } : undefined,
+      },
+    });
+  } catch (error) {
+    Logger.error(error.message, 'countPendingTimeEntries');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
+  }
+};
+
 const createAuditLog = async (
   data: CreateAuditLogData,
 ): Promise<TimeEntryAuditLog> => {
@@ -216,6 +308,9 @@ const timeEntryRepository = {
   getEntriesForUser,
   updateTimeEntry,
   listTimeEntries,
+  resolvePendingTimeEntry,
+  listPendingTimeEntries,
+  countPendingTimeEntries,
   createAuditLog,
 };
 

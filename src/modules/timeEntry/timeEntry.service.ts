@@ -4,11 +4,20 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, PunchType, Role, TimeEntry, User } from '@prisma/client';
+import {
+  ApprovalAction,
+  ApprovalStatus,
+  Prisma,
+  PunchType,
+  Role,
+  TimeEntry,
+  User,
+} from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { v4 as uuidV4 } from 'uuid';
 import { assertCanAccessEmployee } from '../../shared/access-control';
 import { getCycleOf } from '../../shared/payrollCycle';
+import notificationService from '../notification/notification.service';
 import timesheetRepository from '../timesheet/timesheet.repository';
 import { CreateManualTimeEntryDto } from './dto/request/createManualTimeEntry.dto';
 import { validateCreateManualTimeEntry } from './schemas/createManualTimeEntry.schema';
@@ -29,7 +38,12 @@ import { validateDeleteTimeEntry } from './schemas/deleteTimeEntry.schema';
 import { validateFindTimeEntries } from './schemas/findTimeEntries.schema';
 import { validateSyncTimeEntries } from './schemas/syncTimeEntries.schema';
 import { validateUpdateTimeEntry } from './schemas/updateTimeEntry.schema';
+import { ReviewTimeEntryDto } from './dto/request/reviewTimeEntry.dto';
 import timeEntryRepository from './timeEntry.repository';
+import timeEntryApprovalService, {
+  CLEARED_REQUEST,
+  requiresApproval,
+} from './timeEntryApproval.service';
 
 const PUNCH_CYCLE: PunchType[] = [
   PunchType.ENTRADA,
@@ -122,8 +136,23 @@ const assertCanChangeEntry = (actingUser: User, entry: TimeEntry): void => {
   }
 };
 
+// Pedido já aberto (ou inclusão recusada) não aceita nova mudança do funcionário.
+const assertNoOpenRequest = (entry: TimeEntry): void => {
+  if (entry.approvalStatus === ApprovalStatus.PENDING) {
+    throw new BadRequestException(
+      'Esta marcação já está aguardando aprovação do gestor/RH',
+    );
+  }
+  if (entry.approvalStatus === ApprovalStatus.REJECTED) {
+    throw new BadRequestException(
+      'Esta marcação foi recusada. Registre uma nova marcação manual, se preciso.',
+    );
+  }
+};
+
 // Marcação manual: o próprio usuário registra um ponto esquecido informando
 // tipo, horário e motivo. Fica marcada como editedManually e vai para a auditoria.
+// De funcionário, entra como PENDING e só conta nas horas depois de aprovada.
 const createManualTimeEntry = async (
   user: User,
   createManualTimeEntryDto: CreateManualTimeEntryDto,
@@ -140,6 +169,7 @@ const createManualTimeEntry = async (
   validateDeviceTimestamp(deviceTimestamp);
   await assertMonthNotLocked(user.id, deviceTimestamp);
 
+  const needsApproval = requiresApproval(user);
   const created = await timeEntryRepository.createTimeEntry({
     userId: user.id,
     type: createManualTimeEntryDto.type,
@@ -147,15 +177,23 @@ const createManualTimeEntry = async (
     clientGeneratedId: uuidV4(),
     originatedOffline: false,
     editedManually: true,
+    ...(needsApproval && {
+      approvalStatus: ApprovalStatus.PENDING,
+      pendingAction: ApprovalAction.CREATE,
+      requestReason: createManualTimeEntryDto.reason,
+    }),
   });
 
   await timeEntryRepository.createAuditLog({
     timeEntryId: created.id,
     changedByUserId: user.id,
-    action: 'CREATE',
+    action: needsApproval ? 'CREATE_REQUEST' : 'CREATE',
     newData: created as unknown as Prisma.InputJsonValue,
     reason: createManualTimeEntryDto.reason,
   });
+  if (needsApproval) {
+    await timeEntryApprovalService.notifyApprovers(user, created);
+  }
   Logger.log(
     `Manual time entry created for user ${user.id}`,
     'createManualTimeEntry',
@@ -323,13 +361,52 @@ const updateTimeEntry = async (
     if (actingUser.role !== Role.RH) validateDeviceTimestamp(newTimestamp);
     await assertMonthNotLocked(entry.userId, newTimestamp);
   }
+
+  // Funcionário: a mudança fica guardada como pedido; o dado atual segue valendo.
+  if (requiresApproval(actingUser)) {
+    assertNoOpenRequest(entry);
+    const requested = await timeEntryRepository.updateTimeEntry(id, {
+      approvalStatus: ApprovalStatus.PENDING,
+      pendingAction: ApprovalAction.UPDATE,
+      pendingType: rest.type ?? entry.type,
+      pendingDeviceTimestamp: deviceTimestamp
+        ? dayjs(deviceTimestamp).toDate()
+        : entry.deviceTimestamp,
+      requestReason: reason,
+      reviewedBy: { disconnect: true },
+      reviewedAt: null,
+      reviewNote: null,
+    });
+    await timeEntryRepository.createAuditLog({
+      timeEntryId: id,
+      changedByUserId: actingUser.id,
+      action: 'UPDATE_REQUEST',
+      previousData: entry as unknown as Prisma.InputJsonValue,
+      newData: requested as unknown as Prisma.InputJsonValue,
+      reason,
+    });
+    await timeEntryApprovalService.notifyApprovers(actingUser, requested);
+    Logger.log(`Update of time entry ${id} requested`, 'updateTimeEntry');
+    return requested;
+  }
+
+  // Gestor/RH alterando direto resolvem qualquer pedido que estivesse aberto.
   const updated = await timeEntryRepository.updateTimeEntry(id, {
     ...rest,
     deviceTimestamp: deviceTimestamp
       ? dayjs(deviceTimestamp).toDate()
       : undefined,
     editedManually: true,
+    ...(entry.approvalStatus !== ApprovalStatus.APPROVED && {
+      ...CLEARED_REQUEST,
+      approvalStatus: ApprovalStatus.APPROVED,
+      reviewedBy: { connect: { id: actingUser.id } },
+      reviewedAt: new Date(),
+    }),
   });
+  if (entry.approvalStatus === ApprovalStatus.PENDING) {
+    await notificationService.clearApprovalRequests(id);
+  }
 
   await timeEntryRepository.createAuditLog({
     timeEntryId: id,
@@ -363,10 +440,40 @@ const deleteTimeEntry = async (
   assertCanChangeEntry(actingUser, entry);
   await assertMonthNotLocked(entry.userId, entry.deviceTimestamp);
 
+  const isOwnPendingCreate =
+    entry.approvalStatus === ApprovalStatus.PENDING &&
+    entry.pendingAction === ApprovalAction.CREATE;
+
+  // Funcionário pede a exclusão; só cancela direto a própria inclusão ainda não analisada.
+  if (requiresApproval(actingUser) && !isOwnPendingCreate) {
+    assertNoOpenRequest(entry);
+    const requested = await timeEntryRepository.updateTimeEntry(id, {
+      approvalStatus: ApprovalStatus.PENDING,
+      pendingAction: ApprovalAction.DELETE,
+      requestReason: deleteTimeEntryDto.reason,
+      reviewedBy: { disconnect: true },
+      reviewedAt: null,
+      reviewNote: null,
+    });
+    await timeEntryRepository.createAuditLog({
+      timeEntryId: id,
+      changedByUserId: actingUser.id,
+      action: 'DELETE_REQUEST',
+      previousData: entry as unknown as Prisma.InputJsonValue,
+      reason: deleteTimeEntryDto.reason,
+    });
+    await timeEntryApprovalService.notifyApprovers(actingUser, requested);
+    Logger.log(`Deletion of time entry ${id} requested`, 'deleteTimeEntry');
+    return;
+  }
+
   await timeEntryRepository.updateTimeEntry(id, {
     deletedAt: new Date(),
     editedManually: true,
   });
+  if (entry.approvalStatus === ApprovalStatus.PENDING) {
+    await notificationService.clearApprovalRequests(id);
+  }
 
   await timeEntryRepository.createAuditLog({
     timeEntryId: id,
@@ -378,6 +485,18 @@ const deleteTimeEntry = async (
   Logger.log(`Time entry ${id} deleted`, 'deleteTimeEntry');
 };
 
+const reviewTimeEntry = async (
+  id: string,
+  reviewer: User,
+  reviewTimeEntryDto: ReviewTimeEntryDto,
+): Promise<TimeEntryResponseDto> =>
+  await timeEntryApprovalService.reviewTimeEntry(
+    id,
+    reviewer,
+    reviewTimeEntryDto,
+    assertMonthNotLocked,
+  );
+
 const timeEntryService = {
   createTimeEntry,
   createManualTimeEntry,
@@ -385,6 +504,9 @@ const timeEntryService = {
   listTimeEntries,
   updateTimeEntry,
   deleteTimeEntry,
+  listPendingApprovals: timeEntryApprovalService.listPendingApprovals,
+  countPendingApprovals: timeEntryApprovalService.countPendingApprovals,
+  reviewTimeEntry,
   getNextExpectedType,
   getDayBounds,
   PUNCH_CYCLE,

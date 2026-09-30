@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { JwtStrategy } from './modules/auth/middleware/jwt.strategy';
 import { JwtRefreshStrategy } from './modules/auth/middleware/jwtRefresh.strategy';
 import { HourBalanceModule } from './modules/hourBalance/hourBalance.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { OvertimePolicyModule } from './modules/overtimePolicy/overtimePolicy.module';
 import { RefreshTokenModule } from './modules/refreshToken/refreshToken.module';
 import { ReportModule } from './modules/report/report.module';
@@ -27,6 +28,7 @@ import { UserModule } from './modules/user/user.module';
     OvertimePolicyModule,
     ReportModule,
     TimesheetModule,
+    NotificationModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     WinstonModule.forRoot(winstonConfig),
   ],

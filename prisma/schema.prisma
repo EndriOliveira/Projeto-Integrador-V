@@ -27,6 +27,21 @@ enum DayType {
   SUNDAY_HOLIDAY
 }
 
+// Situação da marcação: a manual feita por funcionário (ou a alteração/exclusão
+// que ele pede de uma marcação sua) fica PENDING até o gestor ou o RH decidir.
+enum ApprovalStatus {
+  APPROVED
+  PENDING
+  REJECTED
+}
+
+// O que está aguardando aprovação: criar a marcação, alterar ou excluir.
+enum ApprovalAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 // Adicional de periculosidade (30%) do dia: E = elétrico, N.E. = não elétrico.
 enum HazardType {
   ELETRICO
@@ -62,6 +77,9 @@ model User {
   timeEntryAuditLogs TimeEntryAuditLog[] @relation("FK_TimeEntryAuditLog_User_ChangedByUserId")
   workDays           WorkDay[]           @relation("FK_WorkDay_User_UserId")
   paidHours          PaidHours[]         @relation("FK_PaidHours_User_UserId")
+  reviewedEntries    TimeEntry[]         @relation("FK_TimeEntry_User_ReviewedById")
+  notifications      Notification[]      @relation("FK_Notification_User_UserId")
+  pushTokens         PushToken[]         @relation("FK_PushToken_User_UserId")
 }
 
 model RefreshToken {
@@ -100,10 +118,25 @@ model TimeEntry {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  user      User                @relation("FK_TimeEntry_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  auditLogs TimeEntryAuditLog[] @relation("FK_TimeEntryAuditLog_TimeEntry_TimeEntryId")
+  // Aprovação: enquanto PENDING, uma CREATE ainda não conta nas horas; numa
+  // UPDATE/DELETE continua valendo o dado atual e a mudança pedida fica em
+  // pendingType/pendingDeviceTimestamp até o gestor/RH decidir.
+  approvalStatus         ApprovalStatus  @default(APPROVED)
+  pendingAction          ApprovalAction?
+  pendingType            PunchType?
+  pendingDeviceTimestamp DateTime?       @db.Timestamptz
+  requestReason          String?         @db.VarChar(500)
+  reviewedById           String?         @db.VarChar(255)
+  reviewedAt             DateTime?       @db.Timestamptz
+  reviewNote             String?         @db.VarChar(500)
+
+  user          User                @relation("FK_TimeEntry_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  reviewedBy    User?               @relation("FK_TimeEntry_User_ReviewedById", fields: [reviewedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  auditLogs     TimeEntryAuditLog[] @relation("FK_TimeEntryAuditLog_TimeEntry_TimeEntryId")
+  notifications Notification[]      @relation("FK_Notification_TimeEntry_TimeEntryId")
 
   @@index([userId, deviceTimestamp])
+  @@index([approvalStatus])
 }
 
 model TimeEntryAuditLog {
@@ -168,4 +201,32 @@ model PaidHours {
   user User @relation("FK_PaidHours_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([userId, year, month])
+}
+
+// Aviso interno (sino no web / push no celular), ex.: marcação aguardando aprovação.
+model Notification {
+  id          String    @id @default(uuid()) @db.VarChar(255)
+  userId      String    @db.VarChar(255)
+  type        String    @db.VarChar(50)
+  title       String    @db.VarChar(255)
+  message     String    @db.VarChar(500)
+  timeEntryId String?   @db.VarChar(255)
+  readAt      DateTime? @db.Timestamptz
+  createdAt   DateTime  @default(now())
+
+  user      User       @relation("FK_Notification_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  timeEntry TimeEntry? @relation("FK_Notification_TimeEntry_TimeEntryId", fields: [timeEntryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, readAt])
+}
+
+// Token do Expo Push de cada aparelho em que o usuário está logado no app.
+model PushToken {
+  id        String   @id @default(uuid()) @db.VarChar(255)
+  userId    String   @db.VarChar(255)
+  token     String   @unique @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation("FK_PushToken_User_UserId", fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }

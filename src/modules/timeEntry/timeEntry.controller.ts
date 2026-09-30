@@ -23,16 +23,20 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { User } from '@prisma/client';
+import { Role, User } from '@prisma/client';
+import { Roles } from '../../shared/decorator/roles.decorator';
 import { httpErrors } from '../../shared/errors/http-errors';
+import { RolesGuard } from '../../shared/guards/roles.guard';
 import { GetUser } from '../auth/decorator/get-user.decorator';
 import { CreateManualTimeEntryDto } from './dto/request/createManualTimeEntry.dto';
 import { CreateTimeEntryDto } from './dto/request/createTimeEntry.dto';
 import { DeleteTimeEntryDto } from './dto/request/deleteTimeEntry.dto';
 import { FindTimeEntriesQueryDto } from './dto/request/findTimeEntriesQuery.dto';
+import { ReviewTimeEntryDto } from './dto/request/reviewTimeEntry.dto';
 import { SyncTimeEntriesDto } from './dto/request/syncTimeEntries.dto';
 import { UpdateTimeEntryDto } from './dto/request/updateTimeEntry.dto';
 import { FindTimeEntriesResponseDto } from './dto/response/findTimeEntries.response.dto';
+import { PendingTimeEntryResponseDto } from './dto/response/pendingTimeEntry.response.dto';
 import { SyncTimeEntriesResponseDto } from './dto/response/syncTimeEntries.response.dto';
 import { TimeEntryResponseDto } from './dto/response/timeEntry.response.dto';
 import timeEntryService from './timeEntry.service';
@@ -119,6 +123,65 @@ export class TimeEntryController {
     @Query() query: FindTimeEntriesQueryDto,
   ): Promise<FindTimeEntriesResponseDto> {
     return await timeEntryService.listTimeEntries(user, query);
+  }
+
+  // Fila de aprovação: RH vê todos os pedidos; Gestor, os da sua equipe.
+  @Get('/pending')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH, Role.GESTOR)
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({
+    status: 200,
+    description: 'Time entries awaiting approval',
+    type: [PendingTimeEntryResponseDto],
+  })
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.OK)
+  async listPendingApprovals(
+    @GetUser() user: User,
+  ): Promise<PendingTimeEntryResponseDto[]> {
+    return await timeEntryService.listPendingApprovals(user);
+  }
+
+  @Get('/pending/count')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH, Role.GESTOR)
+  @ApiSecurity('JWT-auth')
+  @ApiResponse({ status: 200, description: 'Number of pending approvals' })
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.OK)
+  async countPendingApprovals(
+    @GetUser() user: User,
+  ): Promise<{ count: number }> {
+    return await timeEntryService.countPendingApprovals(user);
+  }
+
+  @Patch('/:id/review')
+  @UseGuards(AuthGuard(), RolesGuard)
+  @Roles(Role.RH, Role.GESTOR)
+  @ApiSecurity('JWT-auth')
+  @ApiBody({ type: ReviewTimeEntryDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Time entry approved or rejected',
+    type: TimeEntryResponseDto,
+  })
+  @ApiBadRequestResponse(httpErrors.badRequestError)
+  @ApiForbiddenResponse(httpErrors.forbiddenError)
+  @ApiNotFoundResponse(httpErrors.notFoundError)
+  @ApiUnauthorizedResponse(httpErrors.unauthorizedError)
+  @ApiInternalServerErrorResponse(httpErrors.internalServerError)
+  @HttpCode(HttpStatus.OK)
+  async reviewTimeEntry(
+    @Param('id') id: string,
+    @GetUser() user: User,
+    @Body() reviewTimeEntryDto: ReviewTimeEntryDto,
+  ): Promise<TimeEntryResponseDto> {
+    return await timeEntryService.reviewTimeEntry(id, user, reviewTimeEntryDto);
   }
 
   // RH altera qualquer marcação; os demais perfis só as próprias (ver service).

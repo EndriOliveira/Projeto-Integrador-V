@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PunchType } from '@prisma/client';
+import { ApprovalAction, ApprovalStatus, PunchType } from '@prisma/client';
 
 export class TimeEntryResponseDto {
   @ApiProperty({ example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' })
@@ -24,6 +24,22 @@ export class TimeEntryResponseDto {
   clientGeneratedId: string;
   @ApiProperty({ example: false })
   editedManually: boolean;
+  @ApiProperty({ enum: ApprovalStatus, example: ApprovalStatus.APPROVED })
+  approvalStatus: ApprovalStatus;
+  @ApiProperty({ enum: ApprovalAction, nullable: true })
+  pendingAction: ApprovalAction | null;
+  @ApiProperty({ enum: PunchType, nullable: true })
+  pendingType: PunchType | null;
+  @ApiProperty({ example: '2001-01-01T00:00:00.000Z', nullable: true })
+  pendingDeviceTimestamp: Date | null;
+  @ApiProperty({ example: 'Esqueci de bater a entrada', nullable: true })
+  requestReason: string | null;
+  @ApiProperty({ nullable: true })
+  reviewedById: string | null;
+  @ApiProperty({ example: '2001-01-01T00:00:00.000Z', nullable: true })
+  reviewedAt: Date | null;
+  @ApiProperty({ nullable: true })
+  reviewNote: string | null;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
