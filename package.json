@@ -37,7 +37,10 @@
     "prisma:generate": "npx prisma generate",
     "prisma:studio": "npx prisma studio",
     "prisma:reset": "npx prisma migrate reset",
-    "seed": "npx ts-node ./prisma/seeders/main-seeder.ts"
+    "seed": "npx ts-node ./prisma/seeders/main-seeder.ts",
+    "test": "jest",
+    "test:cov": "jest --coverage",
+    "calc:banco": "ts-node --transpile-only ./scripts/bank-calc.ts"
   },
   "dependencies": {
     "@nestjs/common": "^9.0.0",

@@ -1,8 +1,6 @@
 import { Logger, NotFoundException } from '@nestjs/common';
 import {
-  DayType,
   HazardType,
-  OvertimePolicy,
   PaidHours,
   PunchType,
   Role,
@@ -21,10 +19,13 @@ import {
   getCycleRange,
   keyToDateOnly,
 } from '../../shared/payrollCycle';
-import hourCalculationService from '../hourCalculation/hourCalculation.service';
-import { DayBreakdown } from '../hourCalculation/hourCalculation.types';
+import { loadBankLedger } from '../hourCalculation/bankLedger.loader';
+import {
+  CycleSummary,
+  DayBreakdown,
+  OvertimeCategory,
+} from '../hourCalculation/hourCalculation.types';
 import overtimePolicyService from '../overtimePolicy/overtimePolicy.service';
-import timeEntryRepository from '../timeEntry/timeEntry.repository';
 import timesheetRepository from '../timesheet/timesheet.repository';
 import userRepository from '../user/user.repository';
 import { AllReportsQueryDto } from './dto/request/allReportsQuery.dto';
@@ -44,12 +45,13 @@ import {
 // - 20%: horas noturnas (22h às 5h), adicional noturno.
 // - 30% E / N.E.: total do dia quando o apontamento marca periculosidade
 //   elétrica / não elétrica.
-// - Hora extra: excedente da jornada; domingo/feriado vai para a coluna da
-//   regra SUNDAY_HOLIDAY, os demais dias para a da regra WEEKDAY. Os títulos
-//   usam os percentuais cadastrados em Políticas.
-// - "Calculada" (aba Banco de Horas): parte da hora extra que excedeu o teto
-//   do banco e vai para pagamento (DayBreakdown.paymentMinutes).
-// - Negativa: soma dos saldos negativos dos dias.
+// - Hora extra: excedente da jornada; domingo/feriado = 100%, dia em campo
+//   (periculosidade no apontamento) = 60%, demais dias = só banco.
+// - Negativa: horas a menos nos dias (falta sem marcação conta o dia todo).
+// - "Calculada" (aba Banco de Horas): fechamento do ciclo feito pelo
+//   hourCalculation — negativas abatidas de 100%, depois 60%, depois banco;
+//   até 60h ficam presas; o excedente é pago (100% -> 60%, e 70% no DEZ/JAN);
+//   a negativa sem de onde abater passa para o ciclo seguinte.
 
 const MINUTES_PER_DAY = 24 * 60;
 const HOUR_MS = 60 * 60 * 1000;
@@ -95,10 +97,9 @@ type Metrics = {
   night: number;
   hazardE: number;
   hazardNE: number;
-  overtimeWeekday: number;
-  overtimeSunday: number;
-  paymentWeekday: number;
-  paymentSunday: number;
+  overtime60: number;
+  overtime100: number;
+  overtimeBank: number;
   negative: number;
 };
 
@@ -107,10 +108,9 @@ const emptyMetrics = (): Metrics => ({
   night: 0,
   hazardE: 0,
   hazardNE: 0,
-  overtimeWeekday: 0,
-  overtimeSunday: 0,
-  paymentWeekday: 0,
-  paymentSunday: 0,
+  overtime60: 0,
+  overtime100: 0,
+  overtimeBank: 0,
   negative: 0,
 });
 
@@ -170,8 +170,8 @@ const calculateDayMetrics = (
   day: DayBreakdown,
   workDay: WorkDay | undefined,
 ): Metrics => {
-  const isSundayOrHoliday = day.dayType === DayType.SUNDAY_HOLIDAY;
-  const overtime = Math.max(day.balanceMinutes, 0);
+  const overtimeIn = (category: OvertimeCategory): number =>
+    day.overtimeCategory === category ? day.overtimeMinutes : 0;
   return {
     worked: day.workedMinutes,
     night: calculateNightMinutes(buildSegments(day.entries)),
@@ -179,11 +179,10 @@ const calculateDayMetrics = (
       workDay?.hazardType === HazardType.ELETRICO ? day.workedMinutes : 0,
     hazardNE:
       workDay?.hazardType === HazardType.NAO_ELETRICO ? day.workedMinutes : 0,
-    overtimeWeekday: isSundayOrHoliday ? 0 : overtime,
-    overtimeSunday: isSundayOrHoliday ? overtime : 0,
-    paymentWeekday: isSundayOrHoliday ? 0 : day.paymentMinutes,
-    paymentSunday: isSundayOrHoliday ? day.paymentMinutes : 0,
-    negative: Math.max(-day.balanceMinutes, 0),
+    overtime60: overtimeIn('H60'),
+    overtime100: overtimeIn('H100'),
+    overtimeBank: overtimeIn('BANK'),
+    negative: day.negativeMinutes,
   };
 };
 
@@ -265,17 +264,15 @@ const sumFormula = (
   };
 };
 
-type OvertimeLabels = { weekday: string; sunday: string };
-
 type ReportData = {
   user: User;
   year: number;
   month: number;
   days: Map<string, DayBreakdown>;
+  cycles: Map<number, CycleSummary>; // mês de ciclo do ano do relatório
   workDays: Map<string, WorkDay>;
   paidHours: Map<number, PaidHours>;
   holidays: Set<string>;
-  overtimeLabels: OvertimeLabels;
 };
 
 // Aba 1 — Ponto: um dia por linha, do dia 21 ao dia 20.
@@ -283,7 +280,7 @@ const buildTimesheetSheet = (
   workbook: ExcelJS.Workbook,
   data: ReportData,
 ): void => {
-  const { user, year, month, days, workDays, holidays, overtimeLabels } = data;
+  const { user, year, month, days, workDays, holidays } = data;
   const sheet = workbook.addWorksheet('Ponto');
   const { start, end } = getCycleRange(year, month);
 
@@ -347,8 +344,8 @@ const buildTimesheetSheet = (
     [20, 'Projeto'],
     [21, 'Total'],
     [22, '20%'],
-    [25, overtimeLabels.weekday],
-    [26, overtimeLabels.sunday],
+    [25, '60%'],
+    [26, '100%'],
   ];
   for (const [col, title] of singleHeaders) {
     mergeWithValue(sheet, 4, col, col, title, 5);
@@ -384,7 +381,7 @@ const buildTimesheetSheet = (
 
     row.getCell(1).value = date.format('DD/MM/YY');
     row.getCell(2).value = WEEKDAY_NAMES[date.day()];
-    row.getCell(3).value = day && day.bankMinutes > 0 ? 'X' : '';
+    row.getCell(3).value = day && day.overtimeMinutes > 0 ? 'X' : '';
     row.getCell(4).value = isHoliday ? 'X' : '';
     row.getCell(5).value = workDay?.rdoPending ? 'X' : '';
     row.getCell(6).value = hazardLabel(workDay?.hazardType);
@@ -421,8 +418,8 @@ const buildTimesheetSheet = (
         metrics.night,
         metrics.hazardE,
         metrics.hazardNE,
-        metrics.overtimeWeekday,
-        metrics.overtimeSunday,
+        metrics.overtime60,
+        metrics.overtime100,
       ];
       values.forEach((minutes, index) => {
         const cell = row.getCell(21 + index);
@@ -468,47 +465,52 @@ const buildHourBankSheet = (
   data: ReportData,
   metricsByMonth: Map<number, Metrics>,
 ): void => {
-  const { year, month, paidHours, overtimeLabels } = data;
+  const { year, month, paidHours, cycles } = data;
   const sheet = workbook.addWorksheet('Banco de Horas');
   sheet.columns = [
     { width: 14 },
-    ...Array.from({ length: 6 }, () => ({ width: 11 })),
+    ...Array.from({ length: 7 }, () => ({ width: 11 })),
     { width: 2 },
-    ...Array.from({ length: 3 }, () => ({ width: 11 })),
+    ...Array.from({ length: 5 }, () => ({ width: 11 })),
     { width: 2 },
     ...Array.from({ length: 3 }, () => ({ width: 11 })),
   ];
-  const valueCols = [2, 3, 4, 5, 6, 7, 9, 10, 11, 13, 14, 15];
+  const valueCols = [2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 17, 18];
+  // A negativa calculada é um saldo que passa de um ciclo ao outro: somar os meses não faz sentido.
+  const carriedNegativeCol = 14;
 
-  const title = mergeWithValue(sheet, 1, 1, 15, 'BANCO DE HORAS');
+  const title = mergeWithValue(sheet, 1, 1, 18, 'BANCO DE HORAS');
   title.font = { bold: true, size: 16 };
   title.alignment = { horizontal: 'center' };
 
   mergeWithValue(sheet, 2, 1, 1, 'PERÍODO', 3);
-  mergeWithValue(sheet, 2, 2, 7, 'TOTAL DE HORAS POR MÊS');
-  mergeWithValue(sheet, 2, 9, 11, 'TOTAL DE HORAS POR MÊS CALCULADA');
-  mergeWithValue(sheet, 2, 13, 15, 'TOTAL DE HORAS PAGAS');
+  mergeWithValue(sheet, 2, 2, 8, 'TOTAL DE HORAS POR MÊS');
+  mergeWithValue(sheet, 2, 10, 14, 'TOTAL DE HORAS POR MÊS CALCULADA');
+  mergeWithValue(sheet, 2, 16, 18, 'TOTAL DE HORAS PAGAS');
   const subHeaders: [number, string][] = [
     [2, '0%'],
     [3, '20%'],
     [4, '30%'],
-    [5, overtimeLabels.weekday],
-    [6, overtimeLabels.sunday],
-    [7, 'NEGATIVA'],
-    [9, overtimeLabels.weekday],
-    [10, overtimeLabels.sunday],
-    [11, 'NEGATIVA'],
-    [13, '60%'],
-    [14, '70%'],
-    [15, '100%'],
+    [5, '60%'],
+    [6, '100%'],
+    [7, 'BANCO'],
+    [8, 'NEGATIVA'],
+    [10, '60%'],
+    [11, '70%'],
+    [12, '100%'],
+    [13, 'PRESO'],
+    [14, 'NEGATIVA'],
+    [16, '60%'],
+    [17, '70%'],
+    [18, '100%'],
   ];
   for (const [col, text] of subHeaders) {
     sheet.getRow(3).getCell(col).value = text;
   }
   for (const [from, to] of [
-    [1, 7],
-    [9, 11],
-    [13, 15],
+    [1, 8],
+    [10, 14],
+    [16, 18],
   ]) {
     styleRange(sheet, 2, from, 3, to, headerStyle);
   }
@@ -519,6 +521,7 @@ const buildHourBankSheet = (
     const rowNumber = firstMonthRow + index;
     const row = sheet.getRow(rowNumber);
     const metrics = metricsByMonth.get(cycleMonth) ?? emptyMetrics();
+    const cycle = cycles.get(cycleMonth);
     const paid = paidHours.get(cycleMonth);
 
     row.getCell(1).value = label;
@@ -526,12 +529,15 @@ const buildHourBankSheet = (
       metrics.worked,
       metrics.night,
       metrics.hazardE + metrics.hazardNE,
-      metrics.overtimeWeekday,
-      metrics.overtimeSunday,
+      metrics.overtime60,
+      metrics.overtime100,
+      metrics.overtimeBank,
       metrics.negative,
-      metrics.paymentWeekday,
-      metrics.paymentSunday,
-      metrics.negative,
+      cycle?.paid60Minutes ?? 0,
+      cycle?.paid70Minutes ?? 0,
+      cycle?.paid100Minutes ?? 0,
+      cycle?.heldMinutes ?? 0,
+      cycle?.negativeBalanceMinutes ?? 0,
       paid?.paid60Minutes ?? 0,
       paid?.paid70Minutes ?? 0,
       paid?.paid100Minutes ?? 0,
@@ -557,6 +563,7 @@ const buildHourBankSheet = (
     const row = sheet.getRow(firstMonthRow + 12 + index);
     row.getCell(1).value = label;
     for (const col of valueCols) {
+      if (col === carriedNegativeCol) continue;
       row.getCell(col).value = sumFormula(sheet, col, fromRow, toRow);
       row.getCell(col).numFmt = DURATION_FORMAT;
     }
@@ -570,13 +577,24 @@ const buildHourBankSheet = (
   });
 
   const noteRow = firstMonthRow + 16;
-  sheet
-    .getRow(noteRow)
-    .getCell(
-      1,
-    ).value = `Ano: ${year}. Em destaque, o mês do relatório. "Calculada" = hora extra que excedeu o teto do banco de horas e segue para pagamento.`;
-  sheet.getRow(noteRow).getCell(1).font = { italic: true, size: 9 };
+  const heldYear = cycles.get(month)?.heldYearMinutes ?? 0;
+  const notes = [
+    `Ano: ${year}. Em destaque, o mês do relatório.`,
+    `"Calculada": negativas abatidas de 100%, depois 60%, depois banco; até 60h por ciclo ficam presas e o excedente é pago (70% só no DEZ/JAN). Negativa = saldo sem de onde abater, levado ao próximo ciclo.`,
+    `Preso no ano do banco até ${CYCLE_LABELS[month - 1]}: ${formatHours(
+      heldYear,
+    )} (pago a 70% no DEZ/JAN).`,
+  ];
+  notes.forEach((text, index) => {
+    const cell = sheet.getRow(noteRow + index).getCell(1);
+    cell.value = text;
+    cell.font = { italic: true, size: 9 };
+  });
 };
+
+// Minutos -> "12:30" para texto (fora das células de duração).
+const formatHours = (minutes: number): string =>
+  `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
 
 // Aba 3 — Horas Pagas: dados do funcionário, assinatura e horas pagas por mês.
 const buildPaidHoursSheet = (
@@ -681,31 +699,11 @@ const buildPaidHoursSheet = (
 
 type SharedReportData = {
   holidays: Set<string>;
-  policies: OvertimePolicy[];
-  overtimeLabels: OvertimeLabels;
 };
 
-const loadSharedReportData = async (): Promise<SharedReportData> => {
-  const [holidays, policies] = await Promise.all([
-    overtimePolicyService.getHolidayDateSet(),
-    overtimePolicyService.listOvertimePolicies(),
-  ]);
-  const percentLabel = (dayType: DayType, fallback: string): string => {
-    const percentage = hourCalculationService.getPolicyPercentage(
-      dayType,
-      policies,
-    );
-    return percentage !== null ? `${Math.round(percentage * 100)}%` : fallback;
-  };
-  return {
-    holidays,
-    policies,
-    overtimeLabels: {
-      weekday: percentLabel(DayType.WEEKDAY, 'HE'),
-      sunday: percentLabel(DayType.SUNDAY_HOLIDAY, 'HE Dom/Fer'),
-    },
-  };
-};
+const loadSharedReportData = async (): Promise<SharedReportData> => ({
+  holidays: await overtimePolicyService.getHolidayDateSet(),
+});
 
 const reportFileName = (user: User, year: number, month: number): string =>
   `relatorio-ponto-${slugify(user.name)}-${year}-${String(month).padStart(
@@ -723,12 +721,10 @@ const buildUserWorkbook = async (
   // O ano de ciclo vai de 21/12 do ano anterior a 20/12 do ano pedido.
   const yearStart = getCycleRange(year, 1).start;
   const yearEnd = getCycleRange(year, 12).end;
-  const endOfYearEnd = new Date(
-    keyToDateOnly(yearEnd).getTime() + 24 * HOUR_MS + BRT_OFFSET_MS,
-  );
 
-  const [entries, workDayList, paidHoursList] = await Promise.all([
-    timeEntryRepository.getEntriesForUser(user.id, endOfYearEnd),
+  // O banco é calculado desde o início (a negativa passa de um ciclo ao outro).
+  const [ledger, workDayList, paidHoursList] = await Promise.all([
+    loadBankLedger(user, yearEnd),
     timesheetRepository.listWorkDays(
       user.id,
       keyToDateOnly(yearStart),
@@ -737,27 +733,25 @@ const buildUserWorkbook = async (
     timesheetRepository.listPaidHours(user.id, year),
   ]);
 
-  const { days } = hourCalculationService.calculatePeriodBreakdown(
-    user,
-    entries,
-    shared.holidays,
-    shared.policies,
-    yearStart,
-  );
-
   const data: ReportData = {
     user,
     year,
     month,
     days: new Map(
-      days.filter((day) => day.date <= yearEnd).map((day) => [day.date, day]),
+      ledger.days
+        .filter((day) => day.date >= yearStart && day.date <= yearEnd)
+        .map((day) => [day.date, day]),
+    ),
+    cycles: new Map(
+      ledger.cycles
+        .filter((cycle) => cycle.year === year)
+        .map((cycle) => [cycle.month, cycle]),
     ),
     workDays: new Map(
       workDayList.map((workDay) => [dateOnlyToKey(workDay.date), workDay]),
     ),
     paidHours: new Map(paidHoursList.map((paid) => [paid.month, paid])),
     holidays: shared.holidays,
-    overtimeLabels: shared.overtimeLabels,
   };
 
   const metricsByMonth = new Map<number, Metrics>();
