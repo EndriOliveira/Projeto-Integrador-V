@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Branch, Role } from '@prisma/client';
 import { BaseQueryParametersDto } from '../../../../shared/dto/baseQueryParameters.dto';
 
 export class FindUsersQueryDto extends BaseQueryParametersDto {
@@ -21,4 +21,10 @@ export class FindUsersQueryDto extends BaseQueryParametersDto {
     description: 'Filtra funcionários vinculados a este gestor',
   })
   managerId?: string;
+  @ApiProperty({
+    required: false,
+    enum: Branch,
+    description: 'Filtra por filial',
+  })
+  branch?: Branch;
 }

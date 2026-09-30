@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Branch, Role } from '@prisma/client';
 import { z } from 'zod';
 import { UpdateUserDto } from '../dto/request/updateUserDto';
 
@@ -32,6 +32,7 @@ export const validateUpdateUser = (body: UpdateUserDto) => {
       )
       .nullable()
       .optional(),
+    branch: z.nativeEnum(Branch).nullable().optional(),
   });
   const validate = schema.safeParse(body);
   if (!validate['success'])

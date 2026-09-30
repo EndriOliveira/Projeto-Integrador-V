@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Branch, Role } from '@prisma/client';
 import { z } from 'zod';
 import { CreateUserDto } from '../dto/request/createUser.dto';
 
@@ -31,6 +31,7 @@ export const validateCreateUser = (body: CreateUserDto) => {
         'Formato de Data Inválido. Use MM/DD/YYYY',
       )
       .optional(),
+    branch: z.nativeEnum(Branch).optional(),
   });
   const validate = schema.safeParse(body);
   if (!validate['success'])

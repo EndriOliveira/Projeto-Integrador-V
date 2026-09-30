@@ -27,6 +27,7 @@ const defaultSelect = {
   rg: true,
   registrationNumber: true,
   admissionDate: true,
+  branch: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -47,6 +48,7 @@ const safeSelect = {
   rg: true,
   registrationNumber: true,
   admissionDate: true,
+  branch: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -115,7 +117,7 @@ const getUsers = async (
   query: FindUsersQueryDto,
 ): Promise<FindUsersResponseDto> => {
   let { limit, page } = query;
-  const { sortBy, sortType, search, role, active, managerId } = query;
+  const { sortBy, sortType, search, role, active, managerId, branch } = query;
   limit = Number(limit) || 10;
   page = Number(page) || 1;
 
@@ -137,6 +139,7 @@ const getUsers = async (
         ? { active: active === ('true' as any) || active === true }
         : {},
       managerId ? { managerId } : {},
+      branch ? { branch } : {},
     ],
   };
 

@@ -142,6 +142,8 @@ const editUser = async (
           ? parseDateOnly(updateUserDto.admissionDate)
           : null
         : user.admissionDate,
+    branch:
+      updateUserDto.branch !== undefined ? updateUserDto.branch : user.branch,
   });
   delete updatedUser.password;
   Logger.log(`User updated`, 'editUser');

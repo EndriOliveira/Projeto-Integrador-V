@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Branch, Role } from '@prisma/client';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'John Doe' })
@@ -49,4 +49,6 @@ export class CreateUserDto {
     example: '09/22/2023',
   })
   admissionDate?: string;
+  @ApiProperty({ required: false, enum: Branch, description: 'Filial' })
+  branch?: Branch;
 }

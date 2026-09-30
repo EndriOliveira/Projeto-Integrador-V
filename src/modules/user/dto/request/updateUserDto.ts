@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Branch, Role } from '@prisma/client';
 
 export class UpdateUserDto {
   @ApiProperty({ example: 'John Doe' })
@@ -42,4 +42,11 @@ export class UpdateUserDto {
     example: '09/22/2023',
   })
   admissionDate?: string | null;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    enum: Branch,
+    description: 'Filial (null para limpar)',
+  })
+  branch?: Branch | null;
 }

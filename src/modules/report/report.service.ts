@@ -1,5 +1,6 @@
 import { Logger, NotFoundException } from '@nestjs/common';
 import {
+  Branch,
   HazardType,
   PaidHours,
   PunchType,
@@ -193,6 +194,12 @@ const formatCpf = (cpf: string): string =>
 
 const formatDateOnly = (date: Date | null): string =>
   date ? dayjs(dateOnlyToKey(date)).format('DD/MM/YYYY') : '';
+
+const BRANCH_LABELS: Record<Branch, string> = {
+  SAVED: 'Saved',
+  JRE: 'JRE',
+  EMF: 'EMF',
+};
 
 const hazardLabel = (hazardType: HazardType | null | undefined): string => {
   if (hazardType === HazardType.ELETRICO) return 'E';
@@ -616,6 +623,7 @@ const buildPaidHoursSheet = (
 
   const infoRows: [string, string][] = [
     ['Nome:', user.name],
+    ['Filial:', user.branch ? BRANCH_LABELS[user.branch] : ''],
     ['RG:', user.rg ?? ''],
     ['CPF:', formatCpf(user.cpf)],
     ['Data de Admissão:', formatDateOnly(user.admissionDate)],

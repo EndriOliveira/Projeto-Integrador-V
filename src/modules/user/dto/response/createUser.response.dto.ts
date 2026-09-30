@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Branch, Role } from '@prisma/client';
 
 export class CreateUserResponseDto {
   @ApiProperty({ example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' })
@@ -32,6 +32,8 @@ export class CreateUserResponseDto {
   registrationNumber: string | null;
   @ApiProperty({ example: '2023-09-22T00:00:00.000Z', nullable: true })
   admissionDate: Date | null;
+  @ApiProperty({ enum: Branch, nullable: true })
+  branch: Branch | null;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
   createdAt: Date;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z' })
