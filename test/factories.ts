@@ -48,6 +48,7 @@ export const buildTimeEntry = (overrides: Partial<TimeEntry> = {}): TimeEntry =>
     latitude: null,
     longitude: null,
     locationCapturedAt: null,
+    locationAddress: null,
     editedManually: false,
     deletedAt: null,
     createdAt: new Date('2026-09-21T11:00:00.000Z'),

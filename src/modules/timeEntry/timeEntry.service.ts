@@ -44,6 +44,7 @@ import timeEntryApprovalService, {
   CLEARED_REQUEST,
   requiresApproval,
 } from './timeEntryApproval.service';
+import { resolveAddressesInBackground } from './timeEntryLocation.service';
 
 const PUNCH_CYCLE: PunchType[] = [
   PunchType.ENTRADA,
@@ -239,6 +240,7 @@ const createTimeEntry = async (
       : undefined,
   });
   Logger.log(`Time entry created for user ${user.id}`, 'createTimeEntry');
+  resolveAddressesInBackground([created]);
   return created;
 };
 
@@ -260,6 +262,7 @@ const syncTimeEntries = async (
   );
 
   const results: SyncTimeEntryResultDto[] = [];
+  const createdEntries: TimeEntry[] = [];
   for (const entry of syncTimeEntriesDto.entries) {
     const existing = existingByClientId.get(entry.clientGeneratedId);
     if (existing) {
@@ -287,6 +290,7 @@ const syncTimeEntries = async (
           ? dayjs(entry.locationCapturedAt).toDate()
           : undefined,
       });
+      createdEntries.push(created);
       results.push({
         clientGeneratedId: entry.clientGeneratedId,
         status: 'created',
@@ -302,17 +306,15 @@ const syncTimeEntries = async (
     }
   }
 
+  resolveAddressesInBackground(createdEntries);
   Logger.log(`Time entries synced for user ${user.id}`, 'syncTimeEntries');
   return { results };
 };
 
-const listTimeEntries = async (
+const findTimeEntries = async (
   actingUser: User,
   query: FindTimeEntriesQueryDto,
 ): Promise<FindTimeEntriesResponseDto> => {
-  Logger.log(`Listing time entries`, 'listTimeEntries');
-  validateFindTimeEntries(query);
-
   if (query.userId) {
     await assertCanAccessEmployee(actingUser, query.userId);
     return await timeEntryRepository.listTimeEntries(query.userId, query);
@@ -334,6 +336,18 @@ const listTimeEntries = async (
   }
 
   return await timeEntryRepository.listTimeEntries(actingUser.id, query);
+};
+
+const listTimeEntries = async (
+  actingUser: User,
+  query: FindTimeEntriesQueryDto,
+): Promise<FindTimeEntriesResponseDto> => {
+  Logger.log(`Listing time entries`, 'listTimeEntries');
+  validateFindTimeEntries(query);
+  const result = await findTimeEntries(actingUser, query);
+  // Marcações antigas (ou cuja consulta falhou) ganham endereço para a próxima carga.
+  resolveAddressesInBackground(result.timeEntries);
+  return result;
 };
 
 const updateTimeEntry = async (
@@ -391,8 +405,12 @@ const updateTimeEntry = async (
   }
 
   // Gestor/RH alterando direto resolvem qualquer pedido que estivesse aberto.
+  const coordinatesChanged =
+    (rest.latitude !== undefined && rest.latitude !== entry.latitude) ||
+    (rest.longitude !== undefined && rest.longitude !== entry.longitude);
   const updated = await timeEntryRepository.updateTimeEntry(id, {
     ...rest,
+    ...(coordinatesChanged && { locationAddress: null }),
     deviceTimestamp: deviceTimestamp
       ? dayjs(deviceTimestamp).toDate()
       : undefined,
@@ -418,6 +436,7 @@ const updateTimeEntry = async (
   });
 
   Logger.log(`Time entry ${id} updated`, 'updateTimeEntry');
+  if (coordinatesChanged) resolveAddressesInBackground([updated]);
   return updated;
 };
 

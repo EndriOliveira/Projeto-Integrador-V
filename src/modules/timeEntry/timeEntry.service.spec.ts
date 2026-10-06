@@ -19,11 +19,14 @@ import timesheetRepository from '../timesheet/timesheet.repository';
 import userRepository from '../user/user.repository';
 import timeEntryRepository from './timeEntry.repository';
 import timeEntryService from './timeEntry.service';
+import { resolveAddressesInBackground } from './timeEntryLocation.service';
 
 jest.mock('./timeEntry.repository');
 jest.mock('../timesheet/timesheet.repository');
 jest.mock('../user/user.repository');
 jest.mock('../notification/notification.service');
+// O endereço é resolvido em segundo plano (Nominatim): aqui só conferimos a chamada.
+jest.mock('./timeEntryLocation.service');
 
 const repo = jest.mocked(timeEntryRepository);
 const timesheetRepo = jest.mocked(timesheetRepository);
@@ -120,6 +123,21 @@ describe('timeEntryService', () => {
           locationCapturedAt: NOW,
         }),
       );
+    });
+
+    it('deve pedir o endereço da localização em segundo plano depois de criar', async () => {
+      // Arrange
+      repo.getOneTimeEntry.mockResolvedValue(null);
+
+      // Act
+      const created = await timeEntryService.createTimeEntry(funcionario, {
+        type: PunchType.ENTRADA,
+        latitude: -23.5,
+        longitude: -46.6,
+      });
+
+      // Assert
+      expect(resolveAddressesInBackground).toHaveBeenCalledWith([created]);
     });
 
     it('deve respeitar o tipo informado sem consultar o ciclo', async () => {
@@ -386,6 +404,23 @@ describe('timeEntryService', () => {
       expect(repo.listTimeEntries).toHaveBeenCalledWith(undefined, query);
     });
 
+    it('deve pedir em segundo plano o endereço das marcações listadas', async () => {
+      // Arrange
+      const entries = [buildTimeEntry({ latitude: -23.5, longitude: -46.6 })];
+      repo.listTimeEntries.mockResolvedValue({
+        timeEntries: entries,
+        total: 1,
+        page: 1,
+        pages: 1,
+      });
+
+      // Act
+      await timeEntryService.listTimeEntries(rh, query);
+
+      // Assert
+      expect(resolveAddressesInBackground).toHaveBeenCalledWith(entries);
+    });
+
     it('deve listar a equipe e o próprio gestor quando o gestor não filtra', async () => {
       // Arrange
       userRepo.getUsers.mockResolvedValue({
@@ -513,6 +548,48 @@ describe('timeEntryService', () => {
 
       // Assert
       expect(repo.updateTimeEntry).toHaveBeenCalled();
+    });
+
+    it('deve descartar o endereço antigo quando o RH muda as coordenadas', async () => {
+      // Arrange
+      repo.getOneTimeEntry.mockResolvedValue({
+        ...ownEntry,
+        latitude: -23.5,
+        longitude: -46.6,
+        locationAddress: 'Endereço antigo',
+      });
+
+      // Act
+      const updated = await timeEntryService.updateTimeEntry('entry-1', rh, {
+        latitude: -22.9,
+        longitude: -43.2,
+        reason,
+      });
+
+      // Assert
+      expect(repo.updateTimeEntry).toHaveBeenCalledWith(
+        'entry-1',
+        expect.objectContaining({ latitude: -22.9, locationAddress: null }),
+      );
+      expect(resolveAddressesInBackground).toHaveBeenCalledWith([updated]);
+    });
+
+    it('deve manter o endereço quando o RH não muda as coordenadas', async () => {
+      // Arrange
+      repo.getOneTimeEntry.mockResolvedValue(ownEntry);
+
+      // Act
+      await timeEntryService.updateTimeEntry('entry-1', rh, {
+        deviceTimestamp: daysAgo(1),
+        reason,
+      });
+
+      // Assert
+      expect(repo.updateTimeEntry).toHaveBeenCalledWith(
+        'entry-1',
+        expect.not.objectContaining({ locationAddress: null }),
+      );
+      expect(resolveAddressesInBackground).not.toHaveBeenCalled();
     });
 
     it('deve lançar BadRequest quando o funcionário altera marcação com mais de 30 dias', async () => {

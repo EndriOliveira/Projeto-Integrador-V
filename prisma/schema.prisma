@@ -120,6 +120,9 @@ model TimeEntry {
   latitude           Float?
   longitude          Float?
   locationCapturedAt DateTime? @db.Timestamptz
+  // Endereço aproximado das coordenadas (geocodificação reversa), preenchido em
+  // segundo plano depois da marcação; null enquanto não foi resolvido.
+  locationAddress    String?   @db.VarChar(500)
   clientGeneratedId  String    @unique @db.VarChar(255)
   editedManually     Boolean   @default(false)
   deletedAt          DateTime? @db.Timestamptz

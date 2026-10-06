@@ -299,6 +299,24 @@ const createAuditLog = async (
   }
 };
 
+// Grava o endereço só se as coordenadas ainda forem as consultadas e o
+// endereço não tiver sido preenchido por outra consulta nesse meio-tempo.
+const setLocationAddress = async (
+  id: string,
+  coordinates: { latitude: number; longitude: number },
+  locationAddress: string,
+): Promise<void> => {
+  try {
+    await client.timeEntry.updateMany({
+      where: { id, ...coordinates, locationAddress: null },
+      data: { locationAddress },
+    });
+  } catch (error) {
+    Logger.error(error.message, 'setLocationAddress');
+    throw new InternalServerErrorException('Erro Interno de Servidor');
+  }
+};
+
 const timeEntryRepository = {
   createTimeEntry,
   getOneTimeEntry,
@@ -307,6 +325,7 @@ const timeEntryRepository = {
   getEntriesInRange,
   getEntriesForUser,
   updateTimeEntry,
+  setLocationAddress,
   listTimeEntries,
   resolvePendingTimeEntry,
   listPendingTimeEntries,

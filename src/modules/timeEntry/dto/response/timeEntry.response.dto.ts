@@ -20,6 +20,11 @@ export class TimeEntryResponseDto {
   longitude: number | null;
   @ApiProperty({ example: '2001-01-01T00:00:00.000Z', nullable: true })
   locationCapturedAt: Date | null;
+  @ApiProperty({
+    example: 'Avenida Paulista, 1578 – Bela Vista, São Paulo/SP',
+    nullable: true,
+  })
+  locationAddress: string | null;
   @ApiProperty({ example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' })
   clientGeneratedId: string;
   @ApiProperty({ example: false })
