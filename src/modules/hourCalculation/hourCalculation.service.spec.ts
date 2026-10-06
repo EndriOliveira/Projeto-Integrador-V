@@ -1,4 +1,5 @@
 import { DayType, PunchType, TimeEntry } from '@prisma/client';
+import { buildPolicy, fullDay, punch } from '../../../test/factories';
 import {
   BANK_CAP_MINUTES,
   calculateBankLedger,
@@ -7,8 +8,14 @@ import {
   classifyDay,
   classifyOvertime,
   closeCycle,
+  getPolicyPercentage,
+  groupEntriesByDay,
 } from './hourCalculation.service';
 import { CycleSummary } from './hourCalculation.types';
+
+// Datas de referência: 21/09/2026 = segunda, 22/09 = terça.
+const MONDAY = '2026-09-21';
+const TUESDAY = '2026-09-22';
 
 const H = 60;
 const user = { dailyWorkMinutes: 8 * H, workWeekdays: [1, 2, 3, 4, 5] };
@@ -71,6 +78,65 @@ const emptyCycle = {
 };
 
 describe('hourCalculation', () => {
+  describe('groupEntriesByDay', () => {
+    it('deve agrupar as marcações pelo dia BRT (UTC-3)', () => {
+      // Arrange: 23:30 BRT de segunda já é terça em UTC.
+      const lateNight = punch(MONDAY, '23:30', PunchType.SAIDA);
+      const morning = punch(TUESDAY, '08:00', PunchType.ENTRADA);
+
+      // Act
+      const grouped = groupEntriesByDay([lateNight, morning]);
+
+      // Assert
+      expect([...grouped.keys()]).toEqual([MONDAY, TUESDAY]);
+      expect(grouped.get(MONDAY)).toEqual([lateNight]);
+    });
+
+    it('deve ordenar as marcações de cada dia por horário', () => {
+      // Arrange
+      const [entrada, almoco, volta, saida] = fullDay(MONDAY, [
+        '08:00',
+        '12:00',
+        '13:00',
+        '17:00',
+      ]);
+
+      // Act
+      const grouped = groupEntriesByDay([saida, volta, entrada, almoco]);
+
+      // Assert
+      expect(grouped.get(MONDAY)).toEqual([entrada, almoco, volta, saida]);
+    });
+  });
+
+  describe('getPolicyPercentage', () => {
+    it('deve retornar o percentual da regra ativa do tipo de dia', () => {
+      // Arrange
+      const policies = [
+        buildPolicy({ dayType: DayType.WEEKDAY, percentage: 0.6 }),
+        buildPolicy({ dayType: DayType.SUNDAY_HOLIDAY, percentage: 1 }),
+      ];
+
+      // Act / Assert
+      expect(getPolicyPercentage(DayType.SUNDAY_HOLIDAY, policies)).toBe(1);
+    });
+
+    it('deve retornar null quando a regra do tipo de dia está inativa', () => {
+      // Arrange
+      const policies = [
+        buildPolicy({ dayType: DayType.WEEKDAY, active: false }),
+      ];
+
+      // Act / Assert
+      expect(getPolicyPercentage(DayType.WEEKDAY, policies)).toBeNull();
+    });
+
+    it('deve retornar null quando não há regra para o tipo de dia', () => {
+      // Act / Assert
+      expect(getPolicyPercentage(DayType.SATURDAY, [])).toBeNull();
+    });
+  });
+
   describe('calculateWorkedMinutes', () => {
     it('soma os períodos entre entrada/fim do intervalo e início do intervalo/saída', () => {
       const entries = [

@@ -91,9 +91,9 @@ const OFF_DAY_FILL = solidFill('FFF2F2F2');
 const SELECTED_MONTH_FILL = solidFill('FFE2EFDA');
 const TOTAL_FILL = solidFill('FFDDEBF7');
 
-type Segment = { start: Date | null; end: Date | null };
+export type Segment = { start: Date | null; end: Date | null };
 
-type Metrics = {
+export type Metrics = {
   worked: number;
   night: number;
   hazardE: number;
@@ -131,7 +131,7 @@ const brtMinuteOfDay = (date: Date): number => {
 
 // Mesmo pareamento do hourCalculation: começa em ENTRADA/INTERVALO_SAIDA e
 // termina em INTERVALO_ENTRADA/SAIDA. Marcação sem par vira segmento aberto.
-const buildSegments = (entries: TimeEntry[]): Segment[] => {
+export const buildSegments = (entries: TimeEntry[]): Segment[] => {
   const segments: Segment[] = [];
   let current: Segment | null = null;
   for (const entry of entries) {
@@ -153,7 +153,7 @@ const buildSegments = (entries: TimeEntry[]): Segment[] => {
   return segments;
 };
 
-const calculateNightMinutes = (segments: Segment[]): number => {
+export const calculateNightMinutes = (segments: Segment[]): number => {
   let total = 0;
   for (const { start, end } of segments) {
     if (!start || !end) continue;
@@ -167,7 +167,7 @@ const calculateNightMinutes = (segments: Segment[]): number => {
   return total;
 };
 
-const calculateDayMetrics = (
+export const calculateDayMetrics = (
   day: DayBreakdown,
   workDay: WorkDay | undefined,
 ): Metrics => {
@@ -187,7 +187,7 @@ const calculateDayMetrics = (
   };
 };
 
-const formatCpf = (cpf: string): string =>
+export const formatCpf = (cpf: string): string =>
   cpf.length === 11
     ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
     : cpf;
@@ -201,13 +201,15 @@ const BRANCH_LABELS: Record<Branch, string> = {
   EMF: 'EMF',
 };
 
-const hazardLabel = (hazardType: HazardType | null | undefined): string => {
+export const hazardLabel = (
+  hazardType: HazardType | null | undefined,
+): string => {
   if (hazardType === HazardType.ELETRICO) return 'E';
   if (hazardType === HazardType.NAO_ELETRICO) return 'NE';
   return '';
 };
 
-const slugify = (text: string): string =>
+export const slugify = (text: string): string =>
   text
     .normalize('NFD') // separa os acentos das letras...
     .replace(/[^\x20-\x7e]/g, '') // ...e remove tudo que não é ASCII
@@ -713,7 +715,11 @@ const loadSharedReportData = async (): Promise<SharedReportData> => ({
   holidays: await overtimePolicyService.getHolidayDateSet(),
 });
 
-const reportFileName = (user: User, year: number, month: number): string =>
+export const reportFileName = (
+  user: User,
+  year: number,
+  month: number,
+): string =>
   `relatorio-ponto-${slugify(user.name)}-${year}-${String(month).padStart(
     2,
     '0',

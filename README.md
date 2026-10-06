@@ -55,6 +55,18 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Testes
+
+```bash
+# Testes unitários (não precisam de banco nem de .env)
+$ npm test
+
+# Com cobertura
+$ npm run test:cov
+```
+
+O padrão dos testes do sistema (backend e app) está em [docs/TESTES.md](docs/TESTES.md).
+
 
 ## Testes
 

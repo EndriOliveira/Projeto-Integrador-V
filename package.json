@@ -39,6 +39,7 @@
     "prisma:reset": "npx prisma migrate reset",
     "seed": "npx ts-node ./prisma/seeders/main-seeder.ts",
     "test": "jest",
+    "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "calc:banco": "ts-node --transpile-only ./scripts/bank-calc.ts"
   },
@@ -101,12 +102,22 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.service.ts",
+      "shared/**/*.ts",
+      "utils/**/*.ts",
+      "!**/*.dto.ts"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "globalSetup": "<rootDir>/../test/globalSetup.js",
+    "setupFiles": [
+      "<rootDir>/../test/setupEnv.ts"
+    ],
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
   }
 }
